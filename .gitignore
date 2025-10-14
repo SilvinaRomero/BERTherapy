@@ -1,0 +1,8 @@
+data/
+models/
+*.pt
+*.csv
+*.zip
+*.tar.gz
+
+venv/
