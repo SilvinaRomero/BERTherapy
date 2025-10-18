@@ -30,6 +30,7 @@ print(f"TOTAL EXPERIENCIAS: {count_experiencies}")
 # for i in range(count_experiencies):
 for i in range(3):
     parsed_train = json.loads(data_train[i]["text"])
+    print(data_train[i]["text"])
     count_dialogs = len(parsed_train["dialog"])
     # si el diálogo es demasiado corto o demasiado largo (demaciado contexto puede dar error), saltamos
     if count_dialogs < 2 or count_dialogs > 40:
@@ -38,13 +39,12 @@ for i in range(3):
     print(f"TOTAL DIALOGOS: {count_dialogs}")
     print("_______________________________")
     # break
-    context_therapist = ""  # para guardar el contexto del dialogos completo por cada situacion
-    context_patient = ""  # son dos diferentes, porque el orden es muy importante
+    context = ""  # para guardar el contexto del dialogos completo por cada situacion
 
     for j in range(count_dialogs - 1):
         current = parsed_train["dialog"][j]
         next_msg = parsed_train["dialog"][j + 1]
-        context_therapist += f"[{current['speaker'].upper()}]: {current['text']} "
+        context += f"[{current['speaker'].upper()}]: {current['text']} "
         if (
             parsed_train["dialog"][j]["speaker"] == "usr"
             and parsed_train["dialog"][j + 1]["speaker"] == "sys"
@@ -55,27 +55,36 @@ for i in range(3):
             print("Paciente:", patient_response)
             print("Terapeuta:", therapist_response)
             print("-----")
+            temp_context_therapist = context.replace(f"[{next_msg['speaker'].upper()}]: {next_msg['text']}", "")
 
             ## cuando encuentra par usuario->terapeuta, guardamos el registro y el contexto del dialogo para cada uno.
             rows_therapist.append({
-                "context": context_therapist,
+                "context": temp_context_therapist,
                 "input": patient_response,
                 "response": therapist_response,
                 "label": 1
             })
             all_responses_therapist.add(therapist_response)
+            temp_context_patient = context.replace(f"[{current['speaker'].upper()}]: {current['text']}", "")
 
             #### aquí hay que buscar el ultimo input del terapeuta label 1 que está guardado en el csv
             if len(rows_therapist) > 1 and rows_therapist[-2]["label"] == 1:
                 last_therapist_response = rows_therapist[-2]["response"]
                 rows_patient.append({
-                    "context": context_patient,
+                    "context": temp_context_patient,
                     "input": last_therapist_response,
                     "response": patient_response,
                     "label": 1
                 })
                 all_responses_patient.add(patient_response)
-
+            else: 
+                rows_patient.append({
+                    "context": temp_context_patient,
+                    "input": "",
+                    "response": patient_response,
+                    "label": 1
+                })
+                all_responses_patient.add(patient_response)
         elif (
             (parsed_train["dialog"][j]["speaker"] == "usr"
              and parsed_train["dialog"][j + 1]["speaker"] == "usr")
@@ -87,13 +96,13 @@ for i in range(3):
             anyone_response = parsed_train["dialog"][j]["text"]
             another_response = parsed_train["dialog"][j + 1]["text"]
             rows_therapist.append({
-                "context": context_therapist,
+                "context": context,
                 "input": anyone_response,
                 "response": another_response,
                 "label": 0
             })
             rows_patient.append({
-                "context": context_patient,
+                "context": context,
                 "input": another_response,
                 "response": anyone_response,
                 "label": 0
@@ -101,63 +110,63 @@ for i in range(3):
             all_responses_therapist.add(anyone_response)
             all_responses_patient.add(another_response)
 
-        # 🔹 después de procesar, agregas el turno actual al contexto
-        context_patient += f"[{current['speaker'].upper()}]: {current['text']} "
+        # # 🔹 después de procesar, agregas el turno actual al contexto
+        # context += f"[{current['speaker'].upper()}]: {current['text']} "
 
     print('_________________________________________________________________')
 
     break
 
-## añadir mas datos label 0
-all_good_responses_therapist = [
-    r["response"] for r in rows_therapist if r["label"] == 1
-]
-all_good_responses_patient = [r["response"] for r in rows_patient if r["label"] == 1]
+# ## añadir mas datos label 0
+# all_good_responses_therapist = [
+#     r["response"] for r in rows_therapist if r["label"] == 1
+# ]
+# all_good_responses_patient = [r["response"] for r in rows_patient if r["label"] == 1]
 
-# Contar positivos y negativos actuales para balancear el dataset
-pos_therapist = [r for r in rows_therapist if r["label"] == 1]
-neg_therapist = [r for r in rows_therapist if r["label"] == 0]
-pos_patient = [r for r in rows_patient if r["label"] == 1]
-neg_patient = [r for r in rows_patient if r["label"] == 0]
+# # Contar positivos y negativos actuales para balancear el dataset
+# pos_therapist = [r for r in rows_therapist if r["label"] == 1]
+# neg_therapist = [r for r in rows_therapist if r["label"] == 0]
+# pos_patient = [r for r in rows_patient if r["label"] == 1]
+# neg_patient = [r for r in rows_patient if r["label"] == 0]
 
-missing_neg_therapist = max(0, len(pos_therapist) - len(neg_therapist))
-missing_neg_patient = max(0, len(pos_patient) - len(neg_patient))
+# missing_neg_therapist = max(0, len(pos_therapist) - len(neg_therapist))
+# missing_neg_patient = max(0, len(pos_patient) - len(neg_patient))
 
-print(
-    f"Therapist: {len(pos_therapist)} positivos, {len(neg_therapist)} negativos → faltan {missing_neg_therapist}"
-)
-print(
-    f"Patient: {len(pos_patient)} positivos, {len(neg_patient)} negativos → faltan {missing_neg_patient}"
-)
+# print(
+#     f"Therapist: {len(pos_therapist)} positivos, {len(neg_therapist)} negativos → faltan {missing_neg_therapist}"
+# )
+# print(
+#     f"Patient: {len(pos_patient)} positivos, {len(neg_patient)} negativos → faltan {missing_neg_patient}"
+# )
 
-for _ in range(missing_neg_therapist):
-    row = random.choice(pos_therapist)
-    fake_resp = random.choice(all_good_responses_therapist)
-    while fake_resp == row["response"]:
-        fake_resp = random.choice(all_good_responses_therapist)
-    rows_therapist.append(
-        {
-            "context": row["context"],
-            "input": row["input"],
-            "response": fake_resp,
-            "label": 0,
-        }
-    )
+# for _ in range(missing_neg_therapist):
+#     row = random.choice(pos_therapist)
+#     fake_resp = random.choice(all_good_responses_therapist)
+#     while fake_resp == row["response"]:
+#         fake_resp = random.choice(all_good_responses_therapist)
+#     rows_therapist.append(
+#         {
+#             "context": row["context"],
+#             "input": row["input"],
+#             "response": fake_resp,
+#             "label": 0,
+#         }
+#     )
 
-for _ in range(missing_neg_patient):
-    row = random.choice(pos_patient)
-    fake_resp = random.choice(all_good_responses_patient)
-    while fake_resp == row["response"]:
-        fake_resp = random.choice(all_good_responses_patient)
-    rows_patient.append(
-        {
-            "context": row["context"],
-            "input": row["input"],
-            "response": fake_resp,
-            "label": 0,
-        }
-    )
-    print("✅ Negativos añadidos hasta equilibrar datasets.")
+# for _ in range(missing_neg_patient):
+#     row = random.choice(pos_patient)
+#     fake_resp = random.choice(all_good_responses_patient)
+#     while fake_resp == row["response"]:
+#         fake_resp = random.choice(all_good_responses_patient)
+#     rows_patient.append(
+#         {
+#             "context": row["context"],
+#             "input": row["input"],
+#             "response": fake_resp,
+#             "label": 0,
+#         }
+#     )
+#     print("✅ Negativos añadidos hasta equilibrar datasets.")
 
 # Guardar los CSV
 # terapeuta
