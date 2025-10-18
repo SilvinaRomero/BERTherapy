@@ -38,12 +38,13 @@ for i in range(3):
     print(f"TOTAL DIALOGOS: {count_dialogs}")
     print("_______________________________")
     # break
-    context = ""  # para guardar el contexto del dialogos completo por cada situacion
+    context_therapist = ""  # para guardar el contexto del dialogos completo por cada situacion
+    context_patient = ""  # son dos diferentes, porque el orden es muy importante
 
     for j in range(count_dialogs - 1):
         current = parsed_train["dialog"][j]
         next_msg = parsed_train["dialog"][j + 1]
-
+        context_therapist += f"[{current['speaker'].upper()}]: {current['text']} "
         if (
             parsed_train["dialog"][j]["speaker"] == "usr"
             and parsed_train["dialog"][j + 1]["speaker"] == "sys"
@@ -57,7 +58,7 @@ for i in range(3):
 
             ## cuando encuentra par usuario->terapeuta, guardamos el registro y el contexto del dialogo para cada uno.
             rows_therapist.append({
-                "context": context.strip(),
+                "context": context_therapist,
                 "input": patient_response,
                 "response": therapist_response,
                 "label": 1
@@ -68,7 +69,7 @@ for i in range(3):
             if len(rows_therapist) > 1 and rows_therapist[-2]["label"] == 1:
                 last_therapist_response = rows_therapist[-2]["response"]
                 rows_patient.append({
-                    "context": context.strip(),
+                    "context": context_patient,
                     "input": last_therapist_response,
                     "response": patient_response,
                     "label": 1
@@ -86,13 +87,13 @@ for i in range(3):
             anyone_response = parsed_train["dialog"][j]["text"]
             another_response = parsed_train["dialog"][j + 1]["text"]
             rows_therapist.append({
-                "context": context.strip(),
+                "context": context_therapist,
                 "input": anyone_response,
                 "response": another_response,
                 "label": 0
             })
             rows_patient.append({
-                "context": context.strip(),
+                "context": context_patient,
                 "input": another_response,
                 "response": anyone_response,
                 "label": 0
@@ -101,7 +102,7 @@ for i in range(3):
             all_responses_patient.add(another_response)
 
         # 🔹 después de procesar, agregas el turno actual al contexto
-        context += f"[{current['speaker'].upper()}]: {current['text']} "
+        context_patient += f"[{current['speaker'].upper()}]: {current['text']} "
 
     print('_________________________________________________________________')
 
