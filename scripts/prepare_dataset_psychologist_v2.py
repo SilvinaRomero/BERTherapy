@@ -4,6 +4,7 @@ import pandas as pd
 import json
 import sys
 import random
+import re
 
 # Cargar el dataset directamente de HuggingFace
 ds = load_dataset("thu-coai/esconv")
@@ -25,6 +26,19 @@ rows_patient = []  # para guardar los input-response-label paciente
 all_responses_therapist = set()  # para los pools terapeuta
 all_responses_patient = set()  # para los pools paciente
 
+
+def getLastResponse(data):
+    df = pd.DataFrame(data)
+    filtrado = df[df["label"] == 1]["response"]
+    if not filtrado.empty:
+        return filtrado.iloc[-1]
+    return ""
+
+
+def _remove_last_re(haystack: str, needle: str) -> str:
+    pattern = re.compile(re.escape(needle) + r"(?!.*" + re.escape(needle) + r")", re.S)
+    return pattern.sub("", haystack, count=1)
+
 count_experiencies = len(data_train)
 print(f"TOTAL EXPERIENCIAS: {count_experiencies}")
 # for i in range(count_experiencies):
@@ -40,6 +54,8 @@ for i in range(3):
     print("_______________________________")
     # break
     context = ""  # para guardar el contexto del dialogos completo por cada situacion
+    is_first_time_for_user = True
+    last_true_therapist = ""
 
     for j in range(count_dialogs - 1):
         current = parsed_train["dialog"][j]
@@ -52,70 +68,78 @@ for i in range(3):
             ## si es usario-> terapeuta
             patient_response = parsed_train["dialog"][j]["text"]
             therapist_response = parsed_train["dialog"][j + 1]["text"]
+
             print("Paciente:", patient_response)
             print("Terapeuta:", therapist_response)
             print("-----")
-            temp_context_therapist = context.replace(f"[{next_msg['speaker'].upper()}]: {next_msg['text']}", "")
 
-            ## cuando encuentra par usuario->terapeuta, guardamos el registro y el contexto del dialogo para cada uno.
-            rows_therapist.append({
-                "context": temp_context_therapist,
-                "input": patient_response,
-                "response": therapist_response,
-                "label": 1
-            })
-            all_responses_therapist.add(therapist_response)
-            temp_context_patient = context.replace(f"[{current['speaker'].upper()}]: {current['text']}", "")
+            ## cuando encuentra par usuario->terapeuta, guardamos el registro y el contexto del dialogo para cada uno sin su propio response.
 
+            temp_context_patient = _remove_last_re(
+                context, f"[{current['speaker'].upper()}]: {current['text']} "
+            )
             #### aquí hay que buscar el ultimo input del terapeuta label 1 que está guardado en el csv
-            if len(rows_therapist) > 1 and rows_therapist[-2]["label"] == 1:
-                last_therapist_response = rows_therapist[-2]["response"]
-                rows_patient.append({
+            if is_first_time_for_user:
+                last_therapist_response = ""
+                is_first_time_for_user = False
+            else:
+                last_therapist_response = getLastResponse(rows_therapist)
+
+            rows_patient.append(
+                {
                     "context": temp_context_patient,
                     "input": last_therapist_response,
                     "response": patient_response,
-                    "label": 1
-                })
-                all_responses_patient.add(patient_response)
-            else: 
-                rows_patient.append({
-                    "context": temp_context_patient,
-                    "input": "",
-                    "response": patient_response,
-                    "label": 1
-                })
-                all_responses_patient.add(patient_response)
+                    "label": 1,
+                }
+            )
+            all_responses_patient.add(patient_response)
+            temp_context_therapist = _remove_last_re(
+                context, f"[{next_msg['speaker'].upper()}]: {next_msg['text']} "
+            )
+            rows_therapist.append(
+                {
+                    "context": temp_context_therapist,
+                    "input": patient_response,
+                    "response": therapist_response,
+                    "label": 1,
+                }
+            )
+            all_responses_therapist.add(therapist_response)
+            last_therapist_response = ""
         elif (
-            (parsed_train["dialog"][j]["speaker"] == "usr"
-             and parsed_train["dialog"][j + 1]["speaker"] == "usr")
-            or
-            (parsed_train["dialog"][j]["speaker"] == "sys"
-             and parsed_train["dialog"][j + 1]["speaker"] == "sys")
+            parsed_train["dialog"][j]["speaker"] == "usr"
+            and parsed_train["dialog"][j + 1]["speaker"] == "usr"
+        ) or (
+            parsed_train["dialog"][j]["speaker"] == "sys"
+            and parsed_train["dialog"][j + 1]["speaker"] == "sys"
         ):
             # para otros casos, guardamos responses erroneos
             anyone_response = parsed_train["dialog"][j]["text"]
             another_response = parsed_train["dialog"][j + 1]["text"]
-            rows_therapist.append({
-                "context": context,
-                "input": anyone_response,
-                "response": another_response,
-                "label": 0
-            })
-            rows_patient.append({
-                "context": context,
-                "input": another_response,
-                "response": anyone_response,
-                "label": 0
-            })
+            rows_therapist.append(
+                {
+                    "context": context,
+                    "input": anyone_response,
+                    "response": another_response,
+                    "label": 0,
+                }
+            )
+            rows_patient.append(
+                {
+                    "context": context,
+                    "input": another_response,
+                    "response": anyone_response,
+                    "label": 0,
+                }
+            )
             all_responses_therapist.add(anyone_response)
             all_responses_patient.add(another_response)
 
-        # # 🔹 después de procesar, agregas el turno actual al contexto
-        # context += f"[{current['speaker'].upper()}]: {current['text']} "
+    print("_________________________________________________________________")
 
-    print('_________________________________________________________________')
-
-    break
+    # break
+"""
 
 # ## añadir mas datos label 0
 # all_good_responses_therapist = [
@@ -167,6 +191,7 @@ for i in range(3):
 #         }
 #     )
 #     print("✅ Negativos añadidos hasta equilibrar datasets.")
+"""
 
 # Guardar los CSV
 # terapeuta
