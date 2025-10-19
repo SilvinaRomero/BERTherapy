@@ -6,4 +6,5 @@ data/
 
 venv/
 outputs-bert-imdb/
+outputs-bert-imdb*/
 models/bert_*/
