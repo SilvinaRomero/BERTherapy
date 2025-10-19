@@ -8,12 +8,7 @@ import re
 
 # Cargar el dataset directamente de HuggingFace
 ds = load_dataset("thu-coai/esconv")
-# print(ds["train"][0]["text"])
-# print("_____________________")
-# print(ds["train"][0]['text'].keys())
-# sys.exit()
 data_train = ds["train"]
-data_test = ds["test"]
 
 # Rutas de guardado
 PROCESSED_CSV_PATH_THERAPIST = "data/processed/bertherapy_dataset_therapist.csv"
@@ -26,7 +21,8 @@ rows_patient = []  # para guardar los input-response-label paciente
 all_responses_therapist = set()  # para los pools terapeuta
 all_responses_patient = set()  # para los pools paciente
 
-
+# funcion que recibe la lista, la trata como dataframe, para invertir las respuesta y devolver el último response
+# del terapeuta cuyo label era 1 (input para el usuario)
 def getLastResponse(data):
     df = pd.DataFrame(data)
     filtrado = df[df["label"] == 1]["response"]
@@ -34,17 +30,18 @@ def getLastResponse(data):
         return filtrado.iloc[-1]
     return ""
 
-
+# eliminar con regex la última aparicion del texto en el contexto (temp_context)
 def _remove_last_re(haystack: str, needle: str) -> str:
     pattern = re.compile(re.escape(needle) + r"(?!.*" + re.escape(needle) + r")", re.S)
     return pattern.sub("", haystack, count=1)
 
 count_experiencies = len(data_train)
 print(f"TOTAL EXPERIENCIAS: {count_experiencies}")
-# for i in range(count_experiencies):
-for i in range(3):
+
+for i in range(count_experiencies):
+    print(f"Batch: {i}\n")
+    # encodear el text
     parsed_train = json.loads(data_train[i]["text"])
-    print(data_train[i]["text"])
     count_dialogs = len(parsed_train["dialog"])
     # si el diálogo es demasiado corto o demasiado largo (demaciado contexto puede dar error), saltamos
     if count_dialogs < 2 or count_dialogs > 40:
@@ -52,33 +49,30 @@ for i in range(3):
 
     print(f"TOTAL DIALOGOS: {count_dialogs}")
     print("_______________________________")
-    # break
     context = ""  # para guardar el contexto del dialogos completo por cada situacion
-    is_first_time_for_user = True
-    last_true_therapist = ""
+    is_first_time_for_user = True # controla que la primera vez en cada experiencia, el usuario recibe un input vacio
 
     for j in range(count_dialogs - 1):
         current = parsed_train["dialog"][j]
         next_msg = parsed_train["dialog"][j + 1]
-        context += f"[{current['speaker'].upper()}]: {current['text']} "
+        context += f"[{current['speaker'].upper()}]: {current['text']} " # en cada iteración se guarda el texto actual en el contexto
         if (
             parsed_train["dialog"][j]["speaker"] == "usr"
             and parsed_train["dialog"][j + 1]["speaker"] == "sys"
         ):
-            ## si es usario-> terapeuta
+            ## si es usario-> terapeuta: label = 1
             patient_response = parsed_train["dialog"][j]["text"]
             therapist_response = parsed_train["dialog"][j + 1]["text"]
 
             print("Paciente:", patient_response)
             print("Terapeuta:", therapist_response)
-            print("-----")
 
-            ## cuando encuentra par usuario->terapeuta, guardamos el registro y el contexto del dialogo para cada uno sin su propio response.
+            ## contexto temporal para no incluir su propio response en el contexto
 
             temp_context_patient = _remove_last_re(
                 context, f"[{current['speaker'].upper()}]: {current['text']} "
             )
-            #### aquí hay que buscar el ultimo input del terapeuta label 1 que está guardado en el csv
+            #### aquí hay que buscar el ultimo input del terapeuta label 1 que está guardado en rows_therapist
             if is_first_time_for_user:
                 last_therapist_response = ""
                 is_first_time_for_user = False
@@ -106,7 +100,7 @@ for i in range(3):
                 }
             )
             all_responses_therapist.add(therapist_response)
-            last_therapist_response = ""
+            last_therapist_response = "" # resetear la última respuesta en cada bucle
         elif (
             parsed_train["dialog"][j]["speaker"] == "usr"
             and parsed_train["dialog"][j + 1]["speaker"] == "usr"
@@ -138,60 +132,6 @@ for i in range(3):
 
     print("_________________________________________________________________")
 
-    # break
-"""
-
-# ## añadir mas datos label 0
-# all_good_responses_therapist = [
-#     r["response"] for r in rows_therapist if r["label"] == 1
-# ]
-# all_good_responses_patient = [r["response"] for r in rows_patient if r["label"] == 1]
-
-# # Contar positivos y negativos actuales para balancear el dataset
-# pos_therapist = [r for r in rows_therapist if r["label"] == 1]
-# neg_therapist = [r for r in rows_therapist if r["label"] == 0]
-# pos_patient = [r for r in rows_patient if r["label"] == 1]
-# neg_patient = [r for r in rows_patient if r["label"] == 0]
-
-# missing_neg_therapist = max(0, len(pos_therapist) - len(neg_therapist))
-# missing_neg_patient = max(0, len(pos_patient) - len(neg_patient))
-
-# print(
-#     f"Therapist: {len(pos_therapist)} positivos, {len(neg_therapist)} negativos → faltan {missing_neg_therapist}"
-# )
-# print(
-#     f"Patient: {len(pos_patient)} positivos, {len(neg_patient)} negativos → faltan {missing_neg_patient}"
-# )
-
-# for _ in range(missing_neg_therapist):
-#     row = random.choice(pos_therapist)
-#     fake_resp = random.choice(all_good_responses_therapist)
-#     while fake_resp == row["response"]:
-#         fake_resp = random.choice(all_good_responses_therapist)
-#     rows_therapist.append(
-#         {
-#             "context": row["context"],
-#             "input": row["input"],
-#             "response": fake_resp,
-#             "label": 0,
-#         }
-#     )
-
-# for _ in range(missing_neg_patient):
-#     row = random.choice(pos_patient)
-#     fake_resp = random.choice(all_good_responses_patient)
-#     while fake_resp == row["response"]:
-#         fake_resp = random.choice(all_good_responses_patient)
-#     rows_patient.append(
-#         {
-#             "context": row["context"],
-#             "input": row["input"],
-#             "response": fake_resp,
-#             "label": 0,
-#         }
-#     )
-#     print("✅ Negativos añadidos hasta equilibrar datasets.")
-"""
 
 # Guardar los CSV
 # terapeuta
