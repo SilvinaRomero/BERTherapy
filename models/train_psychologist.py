@@ -208,6 +208,7 @@ trainer = Trainer(
 )
 
 trainer.train()
+# trainer.train(resume_from_checkpoint="outputs-bert-imdb/checkpoint-5896")
 
 # graficar las métricas
 plot_metrics(trainer, output_dir_images)
@@ -276,3 +277,10 @@ for ex in examples:
         )
 
     print("=" * 90)
+
+
+## exportar modelo!
+output_dir = "models/bert_psychologist"
+model.save_pretrained(output_dir)
+tokenizer.save_pretrained(output_dir)
+print(f"Modelo y tokenizer guardados en: {output_dir}")
