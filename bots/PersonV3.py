@@ -3,6 +3,7 @@ from sklearn.cluster import KMeans # para agrupar los contextos y reducir el poo
 import torch
 import numpy as np
 import random
+import os
 
 class Person:
     def __init__(self, dir_model, dir_pool, max_pool_size=10000, n_clusters=100): # ~ pool de 50 respuestas
@@ -14,6 +15,9 @@ class Person:
         self.kmeans = None
         self.model = None
         self.response_clusters = {}
+        # Archivos para gestionar respuestas usadas
+        self.used_responses_file = self._get_used_responses_file()
+        self.used_responses = self._load_used_responses()
 
     def initParameters(self):
         self.tokenizer = AutoTokenizer.from_pretrained(self.dir_model)
@@ -31,6 +35,82 @@ class Person:
         if len(responses) > self.max_pool_size: # muestra de pool
             responses = random.sample(responses, self.max_pool_size)
         self.responses= responses
+    
+    def _get_used_responses_file(self):
+        """Determina el archivo de respuestas usadas según el tipo de persona"""
+        class_name = self.__class__.__name__.lower()
+        if class_name == "therapist":
+            return "/home/silvina/proyectos/BERTherapy/used_reponses_therapist.txt"
+        elif class_name == "patient":
+            return "/home/silvina/proyectos/BERTherapy/used_reponses_patient.txt"
+        else:
+            return "/home/silvina/proyectos/BERTherapy/used_responses_generic.txt"
+    
+    def _load_used_responses(self):
+        """Carga las respuestas ya usadas desde el archivo"""
+        if os.path.exists(self.used_responses_file):
+            with open(self.used_responses_file, 'r', encoding='utf-8') as f:
+                return set(line.strip() for line in f if line.strip())
+        return set()
+    
+    def _save_used_response(self, response, cluster_responses=None):
+        """Guarda una respuesta usada y sus similares del cluster en el archivo"""
+        responses_to_save = [response]
+        
+        # Si se proporcionan las respuestas del cluster, calcular similitudes solo de ese cluster
+        if cluster_responses:
+            similar_responses = self._find_similar_in_cluster(response, cluster_responses)
+            responses_to_save.extend(similar_responses)
+        
+        # Guardar todas las respuestas (original + similares)
+        with open(self.used_responses_file, 'a', encoding='utf-8') as f:
+            for resp in responses_to_save:
+                if resp not in self.used_responses:  # Evitar duplicados
+                    self.used_responses.add(resp)
+                    f.write(resp + '\n')
+    
+    def _find_similar_in_cluster(self, selected_response, cluster_responses, threshold=0.6):
+        """Encuentra respuestas similares solo dentro del cluster actual"""
+        if not cluster_responses or len(cluster_responses) <= 1:
+            return []
+        
+        # Verificar que la respuesta seleccionada esté en el cluster
+        if selected_response not in cluster_responses:
+            print(f"⚠️  Respuesta seleccionada no encontrada en cluster para {self.__class__.__name__}")
+            return []
+        
+        # Calcular embeddings solo del cluster actual
+        cluster_embeddings = self._get_embeddings(cluster_responses)
+        selected_idx = cluster_responses.index(selected_response)
+        
+        similar_responses = []
+        for i, response in enumerate(cluster_responses):
+            if i != selected_idx:  # No comparar consigo misma
+                # Calcular similitud coseno
+                dot_product = np.dot(cluster_embeddings[selected_idx], cluster_embeddings[i])
+                norm_selected = np.linalg.norm(cluster_embeddings[selected_idx])
+                norm_current = np.linalg.norm(cluster_embeddings[i])
+                similarity = dot_product / (norm_selected * norm_current)
+                
+                # Si es muy similar, agregarla
+                if similarity > threshold:
+                    similar_responses.append(response)
+        
+        return similar_responses
+    
+    def _filter_used_responses(self, candidate_responses):
+        """Filtra las respuestas ya usadas de la lista de candidatos"""
+        return [resp for resp in candidate_responses if resp not in self.used_responses]
+    
+    def _reset_used_responses(self):
+        """Reinicia el archivo de respuestas usadas cuando se agotan todas las respuestas"""
+        self.used_responses.clear()
+        if os.path.exists(self.used_responses_file):
+            os.remove(self.used_responses_file)
+        print(f"✅ Archivo de respuestas usadas reiniciado para {self.__class__.__name__}")
+    
+    
+    
     def tokenize_batch(self, text_a_batch, response_batch):
         """
         Tokeniza un lote de texto y respuestas, preparando las entradas para el modelo.
@@ -135,8 +215,28 @@ class Person:
         candidate_indices = self.response_clusters[closest_cluster]
         candidate_responses = [self.responses[i] for i in candidate_indices]
         
-        # 4. Buscar la mejor respuesta SOLO en ese cluster (mucho más rápido)
-        best_response, best_score = self.find_best_response(context, input_text, candidate_responses)
+        # 4. Filtrar respuestas ya usadas (incluye similares pre-calculadas)
+        available_responses = self._filter_used_responses(candidate_responses)
+        
+        # 5. Si no hay respuestas disponibles en este cluster, buscar en otros clusters
+        if not available_responses:
+            # Buscar en todos los clusters si no hay respuestas disponibles
+            all_candidate_responses = self.responses
+            available_responses = self._filter_used_responses(all_candidate_responses)
+            
+            # Si aún no hay respuestas disponibles, reiniciar el archivo de respuestas usadas
+            if not available_responses:
+                print(f"⚠️  Todas las respuestas han sido usadas para {self.__class__.__name__}. Reiniciando...")
+                self._reset_used_responses()
+                available_responses = candidate_responses  # Usar las respuestas del cluster original
+        
+        # 6. Buscar la mejor respuesta entre las disponibles
+        best_response, best_score = self.find_best_response(context, input_text, available_responses)
+        
+        # Guardar la respuesta usada junto con las respuestas del cluster para calcular similitudes
+        # Usar available_responses si best_response está ahí, sino usar candidate_responses
+        cluster_for_similarity = available_responses if best_response in available_responses else candidate_responses
+        self._save_used_response(best_response, cluster_for_similarity)
         
         return best_response
     

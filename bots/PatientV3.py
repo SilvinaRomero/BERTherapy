@@ -7,4 +7,5 @@ class Patient(Person):
         super().__init__(self.dir_model, self.dir_pool, max_pool_size=10000, n_clusters=100)
 
     def respond(self, emotion, sentiment, context, input_text):
-        return self.get_best_response(emotion, sentiment, context, input_text)
+        response = self.get_best_response(emotion, sentiment, context, input_text)
+        return response

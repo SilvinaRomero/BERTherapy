@@ -1,5 +1,6 @@
 from bots.TherapistV3 import Therapist
 from bots.PatientV3 import Patient
+import os
 
 # Emociones del dataset v3
 emotions = [
@@ -24,6 +25,17 @@ sentiments = [
 
 # En el dataset v3 no usamos problemas específicos, solo emotion y sentiment
 
+def cleanup_used_responses():
+    """Limpia los archivos de respuestas usadas al terminar la conversación"""
+    files_to_clean = [
+        "/home/silvina/proyectos/BERTherapy/used_reponses_therapist.txt",
+        "/home/silvina/proyectos/BERTherapy/used_reponses_patient.txt"
+    ]
+    
+    for file_path in files_to_clean:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"✅ Archivo limpiado: {os.path.basename(file_path)}")
 
 def run_conversation():
     therapist = Therapist()
@@ -94,6 +106,9 @@ def run_conversation():
             print("\nUSER: " + resp)
 
         turno += 1
+    
+    # Limpiar archivos de respuestas usadas al terminar
+    cleanup_used_responses()
 
 
 if __name__ == "__main__":
