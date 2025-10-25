@@ -5,7 +5,7 @@ import numpy as np
 import random
 
 class Person:
-    def __init__(self, dir_model, dir_pool, max_pool_size=5000, n_clusters=100): # ~ pool de 50 respuestas
+    def __init__(self, dir_model, dir_pool, max_pool_size=10000, n_clusters=100): # ~ pool de 50 respuestas
         self.dir_model = dir_model
         self.dir_pool= dir_pool
         self.max_pool_size = max_pool_size
@@ -121,11 +121,11 @@ class Person:
 
         return best_response, float(best_score)
     
-    def get_best_response(self, problem, emotion, context, input_text):
+    def get_best_response(self, emotion, sentiment, context, input_text):
         """Encuentra la mejor respuesta usando clustering"""
         
-        # 1. Obtener embedding del contexto + input con problem y emotion
-        query_text = f"{problem} [SEP] {emotion} [SEP] {context} [SEP] {input_text}"
+        # 1. Obtener embedding del contexto + input con emotion y sentiment
+        query_text = f"{emotion} [SEP] {sentiment} [SEP] {context} [SEP] {input_text}"
         query_embedding = self._get_embeddings([query_text])
         
         # 2. Predecir el cluster más cercano

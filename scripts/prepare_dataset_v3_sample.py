@@ -11,10 +11,10 @@ ds = load_dataset("ego02/mental-health-chatbot-training")
 data_train = ds["train"]
 
 # Rutas de guardado
-PROCESSED_CSV_PATH_THERAPIST = "data/processed/bertherapy_dataset_full_therapist_v3.csv"
-PROCESSED_CSV_PATH_PATIENT = "data/processed/bertherapy_dataset_full_patient_v3.csv"
-RESPONSES_TXT_PATH_THERAPIST = "data/processed/response_candidates_full_therapist_v3.txt"
-RESPONSES_TXT_PATH_PATIENT = "data/processed/response_candidates_full_patient_v3.txt"
+PROCESSED_CSV_PATH_THERAPIST = "data/processed/bertherapy_dataset_dialogues_therapist_v3_sample.csv"
+PROCESSED_CSV_PATH_PATIENT = "data/processed/bertherapy_dataset_dialogues_patient_v3_sample.csv"
+RESPONSES_TXT_PATH_THERAPIST = "data/processed/response_candidates_dialogues_therapist_v3_sample.txt"
+RESPONSES_TXT_PATH_PATIENT = "data/processed/response_candidates_dialogues_patient_v3_sample.txt"
 
 rows_therapist = []  # para guardar los input-response-label del terapeuta
 rows_patient = []  # para guardar los input-response-label del paciente
@@ -55,7 +55,7 @@ def parse_conversation(text):
             user_content = re.sub(r'\[emotion: \w+\]', '', inst_content)
             user_content = re.sub(r'\[sentiment: \w+\]', '', user_content)
             user_content = user_content.strip()
-
+            
             conversation.append({
                 'user': user_content,
                 'therapist': response,
@@ -135,139 +135,101 @@ def generate_negative_samples(conversation, emotion, sentiment, role='therapist'
 count_experiences = len(data_train)
 print(f"TOTAL EXPERIENCIAS: {count_experiences}")
 
-# Procesar por bloques de 1000 para optimizar memoria y tiempo
-BLOCK_SIZE = 1000
-total_blocks = (count_experiences + BLOCK_SIZE - 1) // BLOCK_SIZE
+# Procesar solo una muestra pequeña para probar (primeras 100 experiencias)
+SAMPLE_SIZE = 100
+print(f"Procesando muestra de {SAMPLE_SIZE} experiencias...")
 
-print(f"Procesando en {total_blocks} bloques de {BLOCK_SIZE} experiencias cada uno...")
-print(f"Tiempo estimado: ~{total_blocks * 2} minutos")
-
-for block_num in range(min(total_blocks, 5)):
-    start_idx = block_num * BLOCK_SIZE
-    end_idx = min(start_idx + BLOCK_SIZE, count_experiences)
+for i in range(min(SAMPLE_SIZE, count_experiences)):
+    if i % 10 == 0:
+        print(f"Procesando experiencia {i}/{SAMPLE_SIZE}")
     
-    print(f"\n=== BLOQUE {block_num + 1}/{total_blocks} (experiencias {start_idx}-{end_idx-1}) ===")
+    text = data_train[i]['text']
+    conversation = parse_conversation(text)
     
-    # Procesar bloque actual
-    for i in range(start_idx, end_idx):
-        if (i - start_idx) % 100 == 0:
-            print(f"  Procesando experiencia {i}/{count_experiences}")
+    if len(conversation) < 2:  # Saltar conversaciones muy cortas
+        continue
+    
+    # Procesar cada turno de la conversación
+    context = ""
+    is_first_turn = True
+    
+    for j, turn in enumerate(conversation):
+        user_msg = turn['user']
+        therapist_msg = turn['therapist']
+        emotion = turn['emotion']
+        sentiment = turn['sentiment']
         
-        text = data_train[i]['text']
-        conversation = parse_conversation(text)
-        
-        if len(conversation) < 2:  # Saltar conversaciones muy cortas
-            continue
-        
-        # Procesar cada turno de la conversación
-        context = ""
-        is_first_turn = True
-        
-        for j, turn in enumerate(conversation):
-            user_msg = turn['user']
-            therapist_msg = turn['therapist']
-            emotion = turn['emotion']
-            sentiment = turn['sentiment']
+        if is_first_turn:
+            # Primer turno: contexto vacío, input del terapeuta
+            context = f"[SYS]: {therapist_msg}"
             
-            if is_first_turn:
-                # Primer turno: contexto vacío, input del terapeuta
-                context = f"[SYS]: {therapist_msg}"
-                
-                # Datos del paciente (respuesta al primer mensaje del terapeuta)
+            # Datos del paciente (respuesta al primer mensaje del terapeuta)
+            rows_patient.append({
+                'context': "",
+                'input': therapist_msg,
+                'response': user_msg,
+                'label': 1,
+                'emotion': emotion,
+                'sentiment': sentiment
+            })
+            all_responses_patient.add(user_msg)
+            is_first_turn = False
+        else:
+            # Turnos siguientes
+            context += f" [SEP] [USR]: {user_msg}"
+            
+            # Datos del terapeuta
+            rows_therapist.append({
+                'context': context,
+                'input': user_msg,
+                'response': therapist_msg,
+                'label': 1,
+                'emotion': emotion,
+                'sentiment': sentiment
+            })
+            all_responses_therapist.add(therapist_msg)
+            
+            # Actualizar contexto para el siguiente turno del paciente
+            context += f" [SEP] [SYS]: {therapist_msg}"
+            
+            # Datos del paciente (si hay siguiente turno)
+            if j < len(conversation) - 1:
+                next_turn = conversation[j + 1]
                 rows_patient.append({
-                    'context': "",
-                    'input': therapist_msg,
-                    'response': user_msg,
-                    'label': 1,
-                    'emotion': emotion,
-                    'sentiment': sentiment
-                })
-                all_responses_patient.add(user_msg)
-                is_first_turn = False
-            else:
-                # Turnos siguientes
-                context += f" [SEP] [USR]: {user_msg}"
-                
-                # Datos del terapeuta
-                rows_therapist.append({
                     'context': context,
-                    'input': user_msg,
-                    'response': therapist_msg,
+                    'input': therapist_msg,
+                    'response': next_turn['user'],
                     'label': 1,
                     'emotion': emotion,
                     'sentiment': sentiment
                 })
-                all_responses_therapist.add(therapist_msg)
-                
-                # Actualizar contexto para el siguiente turno del paciente
-                context += f" [SEP] [SYS]: {therapist_msg}"
-                
-                # Datos del paciente (si hay siguiente turno)
-                if j < len(conversation) - 1:
-                    next_turn = conversation[j + 1]
-                    rows_patient.append({
-                        'context': context,
-                        'input': therapist_msg,
-                        'response': next_turn['user'],
-                        'label': 1,
-                        'emotion': emotion,
-                        'sentiment': sentiment
-                    })
-                    all_responses_patient.add(next_turn['user'])
+                all_responses_patient.add(next_turn['user'])
+    
+    # Generar muestras negativas para balancear el dataset
+    if len(conversation) > 1:
+        emotion = conversation[0]['emotion']
+        sentiment = conversation[0]['sentiment']
         
-        # Generar muestras negativas para balancear el dataset
-        if len(conversation) > 1:
-            emotion = conversation[0]['emotion']
-            sentiment = conversation[0]['sentiment']
-            
-            # Generar muestras negativas para terapeuta
-            negative_therapist = generate_negative_samples(conversation, emotion, sentiment, 'therapist')
-            rows_therapist.extend(negative_therapist)
-            
-            # Generar muestras negativas para paciente
-            negative_patient = generate_negative_samples(conversation, emotion, sentiment, 'patient')
-            rows_patient.extend(negative_patient)
-    
-    # Guardar progreso cada bloque
-    print(f"  Guardando progreso del bloque {block_num + 1}...")
-    
-    # Guardar CSV temporal
-    temp_therapist_path = f"{PROCESSED_CSV_PATH_THERAPIST}.temp"
-    temp_patient_path = f"{PROCESSED_CSV_PATH_PATIENT}.temp"
-    
-    df_therapist_temp = pd.DataFrame(rows_therapist)
-    df_patient_temp = pd.DataFrame(rows_patient)
-    
-    df_therapist_temp.to_csv(temp_therapist_path, index=False, encoding="utf-8")
-    df_patient_temp.to_csv(temp_patient_path, index=False, encoding="utf-8")
-    
-    print(f"  Bloque {block_num + 1} completado. Muestras terapeuta: {len(rows_therapist)}, Muestras paciente: {len(rows_patient)}")
+        # Generar muestras negativas para terapeuta
+        negative_therapist = generate_negative_samples(conversation, emotion, sentiment, 'therapist')
+        rows_therapist.extend(negative_therapist)
+        
+        # Generar muestras negativas para paciente
+        negative_patient = generate_negative_samples(conversation, emotion, sentiment, 'patient')
+        rows_patient.extend(negative_patient)
 
 print(f"\nProcesamiento completado!")
 print(f"Total muestras terapeuta: {len(rows_therapist)}")
 print(f"Total muestras paciente: {len(rows_patient)}")
 
-# Guardar los CSV finales
-print("\nGuardando archivos finales...")
+# Guardar los CSV
 os.makedirs(os.path.dirname(PROCESSED_CSV_PATH_THERAPIST), exist_ok=True)
-os.makedirs(os.path.dirname(PROCESSED_CSV_PATH_PATIENT), exist_ok=True)
-
 df_therapist = pd.DataFrame(rows_therapist)
-df_patient = pd.DataFrame(rows_patient)
-
 df_therapist.to_csv(PROCESSED_CSV_PATH_THERAPIST, index=False, encoding="utf-8")
+
+os.makedirs(os.path.dirname(PROCESSED_CSV_PATH_PATIENT), exist_ok=True)
+df_patient = pd.DataFrame(rows_patient)
 df_patient.to_csv(PROCESSED_CSV_PATH_PATIENT, index=False, encoding="utf-8")
-
-# Limpiar archivos temporales
-temp_therapist_path = f"{PROCESSED_CSV_PATH_THERAPIST}.temp"
-temp_patient_path = f"{PROCESSED_CSV_PATH_PATIENT}.temp"
-
-if os.path.exists(temp_therapist_path):
-    os.remove(temp_therapist_path)
-if os.path.exists(temp_patient_path):
-    os.remove(temp_patient_path)
-
-print("Archivos temporales eliminados.")
 
 # Guardar los archivos de respuestas únicas
 with open(RESPONSES_TXT_PATH_THERAPIST, "w", encoding="utf-8") as f:
@@ -294,3 +256,10 @@ print("Terapeuta:")
 print(df_therapist['emotion'].value_counts())
 print("\nPaciente:")
 print(df_patient['emotion'].value_counts())
+
+# Mostrar algunas muestras
+print(f"\n=== MUESTRAS DEL DATASET ===")
+print("Terapeuta (primeras 3 filas):")
+print(df_therapist.head(3))
+print("\nPaciente (primeras 3 filas):")
+print(df_patient.head(3))

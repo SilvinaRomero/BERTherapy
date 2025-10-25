@@ -18,7 +18,7 @@ import os
 import random
 
 
-class TrainModel:
+class TrainModelV3:
     def __init__(
         self,
         dir_dataset,
@@ -32,16 +32,16 @@ class TrainModel:
         early,
         fill_nan
     ):
-        self.dir_dataset = dir_dataset # carpeta dataset # # "/home/silvina/proyectos/BERTherapy/data/processed/bertherapy_dataset_therapist_improved.csv"
-        self.output_dir_images = output_dir_images # carpeta graficos
-        self.output_dir_model = output_dir_model  # "models/bert_psychologist_v2" # carpeta modelo entrenado
-        self.check_dir_model = check_dir_model  # "outputs-bert-imdb-psycologist-v2" # carpeta checkpoint
-        self.epochs = num_train_epochs # numero de epochs
-        self.batch = batch_size # cantidad por batch
-        self.learning_rate = learning_rate # medida lr
-        self.freezeLayer = freezeLayer # num ero de capas para congelar
-        self.early = early # cantidad de paciencia
-        self.fill_nan = fill_nan # dataset paciente, en inicio de conversacion con input y contexto vacio
+        self.dir_dataset = dir_dataset
+        self.output_dir_images = output_dir_images
+        self.output_dir_model = output_dir_model
+        self.check_dir_model = check_dir_model
+        self.epochs = num_train_epochs
+        self.batch = batch_size
+        self.learning_rate = learning_rate
+        self.freezeLayer = freezeLayer
+        self.early = early
+        self.fill_nan = fill_nan
         # Definir id2label y label2id aquí mismo
         self.label2id = {"pos": 1, "neg": 0}
         self.id2label = {1: "pos", 0: "neg"}
@@ -154,7 +154,7 @@ class TrainModel:
                 # Función local para obtener mensaje inicial
                 def get_initial_message(row):
                     emotion = row["emotion"]
-                    problem = row["problem"]
+                    sentiment = row["sentiment"]
                     
                     # Verificar que emotion no sea None ni vacío
                     if not emotion or pd.isna(emotion):
@@ -163,9 +163,9 @@ class TrainModel:
                     # Obtener mensajes base por emoción
                     messages = self.data.get(emotion.lower(), self.data.get("default"))
                     
-                    # Reemplazar [PROBLEM] con el valor de problem si existe
-                    if problem and not pd.isna(problem):
-                        formatted_messages = [msg.replace("[PROBLEM]", problem) for msg in messages]
+                    # Reemplazar [SENTIMENT] con el valor de sentiment si existe
+                    if sentiment and not pd.isna(sentiment):
+                        formatted_messages = [msg.replace("[SENTIMENT]", sentiment) for msg in messages]
                     else:
                         formatted_messages = messages
                     
@@ -175,7 +175,7 @@ class TrainModel:
                     
                     return random.choice(formatted_messages)
 
-                # Rellenar contexto e input vacíos con un mensaje inicial basado en emoción y problema
+                # Rellenar contexto e input vacíos con un mensaje inicial basado en emoción y sentimiento
                 df["context"] = df.apply(lambda row: get_initial_message(row) if pd.isna(row["context"]) or row["context"] == "" else row["context"], axis=1)
                 df["input"] = df.apply(lambda row: get_initial_message(row) if pd.isna(row["input"]) or row["input"] == "" else row["input"], axis=1)
 
@@ -191,7 +191,8 @@ class TrainModel:
 
     def split_data(self):
         df = self.getDF()
-        X = df[["context", "input", "response","emotion","problem"]]
+        # df = df.iloc[0:100000] # solo 100k registros para entrenamiento.
+        X = df[["context", "input", "response","emotion","sentiment"]]
         y = df["label"]
 
         X_train, X_test, y_train, y_test = train_test_split(
@@ -208,7 +209,8 @@ class TrainModel:
         self.test_dataset = Dataset.from_pandas(pd.concat([X_test, y_test], axis=1))
 
     def tokenize(self, batch):
-        text_a = [f"{p} [SEP] {e} [SEP] {c} [SEP] {i}" for p, e, c, i in zip(batch["problem"], batch["emotion"], batch["context"], batch["input"])]
+        # Usar emotion y sentiment en lugar de problem
+        text_a = [f"{e} [SEP] {s} [SEP] {c} [SEP] {i}" for e, s, c, i in zip(batch["emotion"], batch["sentiment"], batch["context"], batch["input"])]
         return self.tokenizer(
             text_a,
             batch["response"],
@@ -296,13 +298,13 @@ class TrainModel:
         plt.savefig(os.path.join(output_dir_images, "accuracy_curve.jpg"))
         plt.close()
 
-    def test_model_responses(self, problem,emotion, context, input_text, candidate_responses):
+    def test_model_responses(self, emotion, sentiment, context, input_text, candidate_responses):
         """
         Evalúa múltiples respuestas candidatas y devuelve sus scores.
         """
         n = len(candidate_responses)
         responses = candidate_responses
-        text_a = [f"{problem} [SEP] {emotion} [SEP] {context} [SEP] {input_text}" for _ in range(n)]
+        text_a = [f"{emotion} [SEP] {sentiment} [SEP] {context} [SEP] {input_text}" for _ in range(n)]
 
         encodings = self.tokenizer(
             text_a,
@@ -337,14 +339,14 @@ class TrainModel:
             return
         
         print("\n" + "="*80)
-        print("EJECUTANDO MINI TEST")
+        print("EJECUTANDO MINI TEST V3")
         print("="*80)
         
         for i, test in enumerate(mini_tests):
             print(f"\n=== Turno {i+1} ===")
             results = self.test_model_responses(
-                test["problem"], 
                 test["emotion"], 
+                test["sentiment"], 
                 test["context"], 
                 test["input"], 
                 test["candidates"]
@@ -360,61 +362,46 @@ class TrainModel:
             "anxiety": [
                 "[SYS]: Hi, it seems you're feeling anxious. How can I support you today?",
                 "[SYS]: Hello, anxiety can be challenging. What's on your mind?",
-                "[SYS]: Hey, it looks like something's troubling you. How can I help with [PROBLEM]?"
+                "[SYS]: Hey, it looks like something's troubling you. How can I help with [SENTIMENT]?"
             ],
             "depression": [
                 "[SYS]: Hi, it sounds like you might be feeling down. I'm here to listen, how are you?",
                 "[SYS]: Hello, depression can be heavy. What would you like to talk about?",
-                "[SYS]: Hey, it’s okay to feel low. How can I assist with [PROBLEM]?"
+                "[SYS]: Hey, it's okay to feel low. How can I assist with [SENTIMENT]?"
             ],
             "sadness": [
                 "[SYS]: Hi, it seems you're feeling sad. How can I support you today?",
-                "[SYS]: Hello, sadness can be tough. What’s on your mind?",
-                "[SYS]: Hey, I’m here for you. How can I help with [PROBLEM]?"
+                "[SYS]: Hello, sadness can be tough. What's on your mind?",
+                "[SYS]: Hey, I'm here for you. How can I help with [SENTIMENT]?"
             ],
             "fear": [
                 "[SYS]: Hi, it seems you're feeling fearful. How can I help you through this?",
-                "[SYS]: Hello, fear can be overwhelming. What’s worrying you?",
-                "[SYS]: Hey, let’s face this together. How can I assist with [PROBLEM]?"
-            ],
-            "disgust": [
-                "[SYS]: Hi, it sounds like something’s bothering you. How can I help?",
-                "[SYS]: Hello, I notice you might feel upset. What happened with [PROBLEM]?",
-                "[SYS]: Hey, that sounds frustrating. How can I support you with [PROBLEM]?"
+                "[SYS]: Hello, fear can be overwhelming. What's worrying you?",
+                "[SYS]: Hey, let's face this together. How can I assist with [SENTIMENT]?"
             ],
             "anger": [
                 "[SYS]: Hi, it seems you're feeling angry. How can I help you process this?",
-                "[SYS]: Hello, anger can be intense. What’s triggering you with [PROBLEM]?",
-                "[SYS]: Hey, let’s work through this. How can I assist with [PROBLEM]?"
+                "[SYS]: Hello, anger can be intense. What's triggering you with [SENTIMENT]?",
+                "[SYS]: Hey, let's work through this. How can I assist with [SENTIMENT]?"
             ],
-            "shame": [
-                "[SYS]: Hi, it sounds like you might be feeling ashamed. I’m here for you, how can I help?",
-                "[SYS]: Hello, shame can be hard. What’s on your mind with [PROBLEM]?",
-                "[SYS]: Hey, you’re not alone. How can I support you with [PROBLEM]?"
+            "joy": [
+                "[SYS]: Hi, it sounds like you're feeling joyful. How can I support you today?",
+                "[SYS]: Hello, joy is wonderful. What's bringing you happiness?",
+                "[SYS]: Hey, it's great to see you feeling good. How can I help with [SENTIMENT]?"
             ],
-            "guilt": [
-                "[SYS]: Hi, it seems you’re feeling guilty. How can I support you?",
-                "[SYS]: Hello, guilt can weigh heavily. What’s happening with [PROBLEM]?",
-                "[SYS]: Hey, let’s talk it out. How can I help with [PROBLEM]?"
+            "surprise": [
+                "[SYS]: Hi, it seems you're feeling surprised. How can I support you today?",
+                "[SYS]: Hello, surprises can be unexpected. What's on your mind?",
+                "[SYS]: Hey, I'm here for you. How can I help with [SENTIMENT]?"
             ],
-            "jealousy": [
-                "[SYS]: Hi, it sounds like you’re feeling jealous. How can I assist?",
-                "[SYS]: Hello, jealousy can be tough. What’s behind this with [PROBLEM]?",
-                "[SYS]: Hey, I’m here to help. How can I support you with [PROBLEM]?"
-            ],
-            "nervousness": [
-                "[SYS]: Hi, it seems you’re feeling nervous. How can I help?",
-                "[SYS]: Hello, nervousness can be unsettling. What’s on your mind with [PROBLEM]?",
-                "[SYS]: Hey, let’s calm that down. How can I assist with [PROBLEM]?"
-            ],
-            "pain": [
-                "[SYS]: Hi, it sounds like you’re in pain. How can I support you?",
-                "[SYS]: Hello, that must hurt. What’s going on with [PROBLEM]?",
-                "[SYS]: Hey, I’m here for you. How can I help with [PROBLEM]?"
+            "love": [
+                "[SYS]: Hi, it sounds like you're feeling loving. How can I support you today?",
+                "[SYS]: Hello, love is beautiful. What would you like to talk about?",
+                "[SYS]: Hey, I'm here for you. How can I help with [SENTIMENT]?"
             ],
             "default": [
-                "[SYS]: Hi, I’m here to help. How can I support you today?",
-                "[SYS]: Hello, it sounds like something’s up. What’s on your mind with [PROBLEM]?"
+                "[SYS]: Hi, I'm here to help. How can I support you today?",
+                "[SYS]: Hello, it sounds like something's up. What's on your mind with [SENTIMENT]?"
             ]
         }
 
