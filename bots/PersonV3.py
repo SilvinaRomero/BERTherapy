@@ -68,9 +68,10 @@ class Person:
                 if resp not in self.used_responses:  # Evitar duplicados
                     self.used_responses.add(resp)
                     f.write(resp + '\n')
-    
-    def _find_similar_in_cluster(self, selected_response, cluster_responses, threshold=0.6):
-        """Encuentra respuestas similares solo dentro del cluster actual"""
+    # threshold = que tan similar es la respuesta a la seleccionada
+    # max_similar = cuantas respuestas similares se quieren encontrar
+    def _find_similar_in_cluster(self, selected_response, cluster_responses, threshold=0.75, max_similar=5):
+        """Encuentra respuestas similares solo dentro del cluster actual con límite estricto"""
         if not cluster_responses or len(cluster_responses) <= 1:
             return []
         
@@ -83,7 +84,8 @@ class Person:
         cluster_embeddings = self._get_embeddings(cluster_responses)
         selected_idx = cluster_responses.index(selected_response)
         
-        similar_responses = []
+        # Calcular similitudes y ordenar por relevancia
+        similarities = []
         for i, response in enumerate(cluster_responses):
             if i != selected_idx:  # No comparar consigo misma
                 # Calcular similitud coseno
@@ -92,9 +94,16 @@ class Person:
                 norm_current = np.linalg.norm(cluster_embeddings[i])
                 similarity = dot_product / (norm_selected * norm_current)
                 
-                # Si es muy similar, agregarla
+                # Si es muy similar, agregarla a la lista
                 if similarity > threshold:
-                    similar_responses.append(response)
+                    similarities.append((similarity, response))
+        
+        # Ordenar por similitud descendente y tomar solo las top N
+        similarities.sort(reverse=True)
+        similar_responses = [resp for _, resp in similarities[:max_similar]]
+        
+        # if similar_responses:
+        #     print(f"🎯 {self.__class__.__name__}: Marcadas {len(similar_responses)} respuestas similares (umbral: {threshold})")
         
         return similar_responses
     
@@ -108,6 +117,17 @@ class Person:
         if os.path.exists(self.used_responses_file):
             os.remove(self.used_responses_file)
         print(f"✅ Archivo de respuestas usadas reiniciado para {self.__class__.__name__}")
+    
+    def _truncate_context(self, context, max_turns=3):
+        """Mantiene solo los últimos N turnos del contexto para evitar límite de caracteres"""
+        parts = context.split(' [SEP] ')
+        
+        # Mantener solo los últimos max_turns turnos (cada turno tiene [SYS] y [USR])
+        if len(parts) > max_turns * 2:  # *2 porque cada turno tiene [SYS] y [USR]
+            parts = parts[-(max_turns * 2):]
+            # print(f"📝 Contexto truncado a últimos {max_turns} turnos para {self.__class__.__name__}")
+        
+        return ' [SEP] '.join(parts)
     
     
     
@@ -204,21 +224,24 @@ class Person:
     def get_best_response(self, emotion, sentiment, context, input_text):
         """Encuentra la mejor respuesta usando clustering"""
         
-        # 1. Obtener embedding del contexto + input con emotion y sentiment
-        query_text = f"{emotion} [SEP] {sentiment} [SEP] {context} [SEP] {input_text}"
+        # 1. Truncar contexto para evitar límite de caracteres
+        truncated_context = self._truncate_context(context)
+        
+        # 2. Obtener embedding del contexto + input con emotion y sentiment
+        query_text = f"{emotion} [SEP] {sentiment} [SEP] {truncated_context} [SEP] {input_text}"
         query_embedding = self._get_embeddings([query_text])
         
-        # 2. Predecir el cluster más cercano
+        # 3. Predecir el cluster más cercano
         closest_cluster = self.kmeans.predict(query_embedding)[0]
         
-        # 3. Obtener candidatos solo de ese cluster
+        # 4. Obtener candidatos solo de ese cluster
         candidate_indices = self.response_clusters[closest_cluster]
         candidate_responses = [self.responses[i] for i in candidate_indices]
         
-        # 4. Filtrar respuestas ya usadas (incluye similares pre-calculadas)
+        # 5. Filtrar respuestas ya usadas (incluye similares pre-calculadas)
         available_responses = self._filter_used_responses(candidate_responses)
         
-        # 5. Si no hay respuestas disponibles en este cluster, buscar en otros clusters
+        # 6. Si no hay respuestas disponibles en este cluster, buscar en otros clusters
         if not available_responses:
             # Buscar en todos los clusters si no hay respuestas disponibles
             all_candidate_responses = self.responses
@@ -230,8 +253,8 @@ class Person:
                 self._reset_used_responses()
                 available_responses = candidate_responses  # Usar las respuestas del cluster original
         
-        # 6. Buscar la mejor respuesta entre las disponibles
-        best_response, best_score = self.find_best_response(context, input_text, available_responses)
+        # 7. Buscar la mejor respuesta entre las disponibles
+        best_response, best_score = self.find_best_response(truncated_context, input_text, available_responses)
         
         # Guardar la respuesta usada junto con las respuestas del cluster para calcular similitudes
         # Usar available_responses si best_response está ahí, sino usar candidate_responses
