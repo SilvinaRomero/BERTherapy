@@ -1,8 +1,8 @@
-from TrainModelsV3 import TrainModelV3
+from TrainModels import TrainModels
 
 
 config = {
-    "version": "V3_FULL",
+    "version": "1.0",
     "num_train_epochs": 6,
     "batch_size": 128, # para reducir el tiempo de entrenamiento.
     "learning_rate": 2e-5,
@@ -11,12 +11,12 @@ config = {
 }
 
 
-def train_therapist_v3(data=[]):
-    psychologist_trainer = TrainModelV3(
-        dir_dataset="/home/silvina/proyectos/BERTherapy/data/processed/bertherapy_dataset_full_therapist_v3.csv",
-        output_dir_images=f"/home/silvina/proyectos/BERTherapy/images/train_psychologist_v{config['version']}_full",
-        output_dir_model=f"models/bert_psychologist_v{config['version']}_full",
-        check_dir_model=f"outputs-bert-imdb-psycologist_v{config['version']}_full",
+def train_therapist(data=[]):
+    therapist_trainer = TrainModels(
+        dir_dataset="/home/silvina/proyectos/BERTherapy/data/processed/bertherapy_dataset_therapist_full.csv",
+        output_dir_images=f"/home/silvina/proyectos/BERTherapy/images/train_therapist_v{config['version']}",
+        output_dir_model=f"models/bert_therapist_v{config['version']}",
+        check_dir_model=f"outputs-bert-imdb-therapist_v{config['version']}",
         num_train_epochs=config["num_train_epochs"],
         batch_size=config["batch_size"],
         learning_rate=config["learning_rate"],
@@ -26,18 +26,18 @@ def train_therapist_v3(data=[]):
     )
 
     # Ejecutar todo el pipeline
-    psychologist_trainer.run_all()
+    therapist_trainer.run_all()
     if len(data) > 0:
         # mostrar test
-        psychologist_trainer.run_mini_test(data)
+        therapist_trainer.run_mini_test(data)
 
 
-def train_patient_v3(data=[]):
-    patient_trainer = TrainModelV3(
-        dir_dataset="/home/silvina/proyectos/BERTherapy/data/processed/bertherapy_dataset_full_patient_v3.csv",
-        output_dir_images=f"/home/silvina/proyectos/BERTherapy/images/train_patient_v{config['version']}_full",
-        output_dir_model=f"models/bert_patient_v{config['version']}_full",
-        check_dir_model=f"outputs-bert-imdb-patient_v{config['version']}_full",
+def train_patient(data=[]):
+    patient_trainer = TrainModels(
+        dir_dataset="/home/silvina/proyectos/BERTherapy/data/processed/bertherapy_dataset_patient_full.csv",
+        output_dir_images=f"/home/silvina/proyectos/BERTherapy/images/train_patient_v{config['version']}",
+        output_dir_model=f"models/bert_patient_v{config['version']}",
+        check_dir_model=f"outputs-bert-imdb-patient_v{config['version']}",
         num_train_epochs=config["num_train_epochs"],
         batch_size=config["batch_size"],
         learning_rate=config["learning_rate"],
@@ -54,7 +54,7 @@ def train_patient_v3(data=[]):
 
 
 # Datos de prueba actualizados para el nuevo formato
-test_therapist_v3 = [
+test_therapist = [
     {
         "context": "[USR]: I've been feeling so sad and overwhelmed lately. Work has become such a massive source of stress for me. [SYS]: Hey there, I'm here to listen and support you. It sounds like work has been really challenging lately. Can you tell me more about what's been going on?",
         "input": "I recently got a promotion at work, which I thought would be exciting. But the added responsibilities and pressure have just taken a toll on my mental health.",
@@ -81,7 +81,7 @@ test_therapist_v3 = [
     },
 ]
 
-test_patient_v3 = [
+test_patient = [
     {
         "context": "[SYS]: Hey there, I'm here to listen and support you. It sounds like work has been really challenging lately. Can you tell me more about what's been going on?",
         "input": "Hey there, I'm here to listen and support you. It sounds like work has been really challenging lately. Can you tell me more about what's been going on?",
@@ -109,25 +109,25 @@ test_patient_v3 = [
 ]
 
 
-print(f"  CONFIGURACIÓN V3:\n  ")
+print(f"  CONFIGURACIÓN VERSIÓN: {config['version']}\n  ")
 for key, value in config.items():
     print(f"  {key}: {value}")
 print("=" * 80 + "\n")
 
 print("=" * 80)
-print("  ENTRENAMIENTO DE TERAPEUTA V3")
+print("  ENTRENAMIENTO DE TERAPEUTA")
 print("=" * 80)
-train_therapist_v3(data=test_therapist_v3)
+train_therapist(data=test_therapist)
 
 print("\n" + "=" * 80)
-print("  ✓ TERAPEUTA V3 COMPLETADO")
+print("  ✓ TERAPEUTA COMPLETADO")
 print("=" * 80 + "\n")
 
 print("=" * 80)
-print("  ENTRENAMIENTO DE PACIENTE V3")
+print("  ENTRENAMIENTO DE PACIENTE")
 print("=" * 80)
-train_patient_v3(data=test_patient_v3)
+train_patient(data=test_patient)
 
 print("\n" + "=" * 80)
-print("  ✓ PACIENTE V3 COMPLETADO")
+print("  ✓ PACIENTE COMPLETADO")
 print("=" * 80 + "\n")

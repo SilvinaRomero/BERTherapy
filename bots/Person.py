@@ -43,8 +43,6 @@ class Person:
             return "/home/silvina/proyectos/BERTherapy/used_reponses_therapist.txt"
         elif class_name == "patient":
             return "/home/silvina/proyectos/BERTherapy/used_reponses_patient.txt"
-        else:
-            return "/home/silvina/proyectos/BERTherapy/used_responses_generic.txt"
     
     def _load_used_responses(self):
         """Carga las respuestas ya usadas desde el archivo"""

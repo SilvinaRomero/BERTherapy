@@ -18,7 +18,7 @@ import os
 import random
 
 
-class TrainModelV3:
+class TrainModels:
     def __init__(
         self,
         dir_dataset,
@@ -339,7 +339,7 @@ class TrainModelV3:
             return
         
         print("\n" + "="*80)
-        print("EJECUTANDO MINI TEST V3")
+        print("EJECUTANDO MINI TEST")
         print("="*80)
         
         for i, test in enumerate(mini_tests):
