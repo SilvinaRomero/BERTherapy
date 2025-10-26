@@ -1,15 +1,15 @@
 from TrainModels import TrainModels
 
-
+# la version es el numero de la version del modelo y de los graficos 
+# to do: cargar version desde el env, y actulizar a rutas dinamicas.
 config = {
     "version": "1.0",
     "num_train_epochs": 6,
-    "batch_size": 128, # para reducir el tiempo de entrenamiento.
+    "batch_size": 128, # para reducir el tiempo de entrenamiento, con un batch menor se tardaba demaciado.
     "learning_rate": 2e-5,
     "freezeLayer": 4,
     "early": 3
 }
-
 
 def train_therapist(data=[]):
     therapist_trainer = TrainModels(
@@ -30,7 +30,6 @@ def train_therapist(data=[]):
     if len(data) > 0:
         # mostrar test
         therapist_trainer.run_mini_test(data)
-
 
 def train_patient(data=[]):
     patient_trainer = TrainModels(
@@ -53,7 +52,7 @@ def train_patient(data=[]):
         patient_trainer.run_mini_test(data)
 
 
-# Datos de prueba actualizados para el nuevo formato
+# Datos de prueba para los mini tests
 test_therapist = [
     {
         "context": "[USR]: I've been feeling so sad and overwhelmed lately. Work has become such a massive source of stress for me. [SYS]: Hey there, I'm here to listen and support you. It sounds like work has been really challenging lately. Can you tell me more about what's been going on?",
@@ -108,7 +107,6 @@ test_patient = [
     },
 ]
 
-
 print(f"  CONFIGURACIÓN VERSIÓN: {config['version']}\n  ")
 for key, value in config.items():
     print(f"  {key}: {value}")
@@ -117,7 +115,7 @@ print("=" * 80 + "\n")
 print("=" * 80)
 print("  ENTRENAMIENTO DE TERAPEUTA")
 print("=" * 80)
-train_therapist(data=test_therapist)
+train_therapist(data=test_therapist) # train_therapist() para no realizar el mini test
 
 print("\n" + "=" * 80)
 print("  ✓ TERAPEUTA COMPLETADO")
@@ -126,7 +124,7 @@ print("=" * 80 + "\n")
 print("=" * 80)
 print("  ENTRENAMIENTO DE PACIENTE")
 print("=" * 80)
-train_patient(data=test_patient)
+train_patient(data=test_patient) # train_patient() para no realizar el mini test
 
 print("\n" + "=" * 80)
 print("  ✓ PACIENTE COMPLETADO")

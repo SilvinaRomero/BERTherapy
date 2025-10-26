@@ -39,7 +39,7 @@ def cleanup_used_responses():
             print(f"✅ Archivo limpiado: {os.path.basename(file_path)}")
 
 def run_conversation():
-    #inicializar los bots
+    # inicializar los bots
     therapist = Therapist()
     therapist.initParameters() # crear clusters de respuestas de terapeuta entre otros parámetros
 

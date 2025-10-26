@@ -37,7 +37,9 @@ class Person:
         self.responses= responses
     
     def _get_used_responses_file(self):
-        """Determina el archivo de respuestas usadas según el tipo de persona"""
+        """Determina el archivo de respuestas usadas según el tipo de persona
+           Se eliminan los archivos al terminar la conversación en main.py
+        """
         class_name = self.__class__.__name__.lower()
         if class_name == "therapist":
             return "/home/silvina/proyectos/BERTherapy/used_reponses_therapist.txt"
@@ -66,10 +68,12 @@ class Person:
                 if resp not in self.used_responses:  # Evitar duplicados
                     self.used_responses.add(resp)
                     f.write(resp + '\n')
-    # threshold = que tan similar es la respuesta a la seleccionada
-    # max_similar = cuantas respuestas similares se quieren encontrar
+    
     def _find_similar_in_cluster(self, selected_response, cluster_responses, threshold=0.75, max_similar=5):
         """Encuentra respuestas similares solo dentro del cluster actual con límite estricto"""
+        # threshold = que tan similar es la respuesta a la seleccionada
+        # max_similar = cuantas respuestas similares se quieren encontrar y descartar en siguientes respuestas
+        # 0.75 Y 5 son la mejor configuracion encontrada para que los roles no se queden sin respuestas, y filtrar las respuestas que son realmente similares
         if not cluster_responses or len(cluster_responses) <= 1:
             return []
         
@@ -92,7 +96,7 @@ class Person:
                 norm_current = np.linalg.norm(cluster_embeddings[i])
                 similarity = dot_product / (norm_selected * norm_current)
                 
-                # Si es muy similar, agregarla a la lista
+                # Si es muy similar, agregarla a la lista de respuestas usadas
                 if similarity > threshold:
                     similarities.append((similarity, response))
         
@@ -117,7 +121,10 @@ class Person:
         print(f"✅ Archivo de respuestas usadas reiniciado para {self.__class__.__name__}")
     
     def _truncate_context(self, context, max_turns=3):
-        """Mantiene solo los últimos N turnos del contexto para evitar límite de caracteres"""
+        """Mantiene solo los últimos max_turns turnos del contexto para evitar límite de caracteres"""
+        # con las tres ultimas preguntas/respuestas, el modelo comprende el contexto
+        # un contexto muy largo, da error en Bert, max 2048 tokens
+        # esto pasa cuando el paciente y el terapeuta escogen respuestas muy largas
         parts = context.split(' [SEP] ')
         
         # Mantener solo los últimos max_turns turnos (cada turno tiene [SYS] y [USR])
@@ -159,7 +166,7 @@ class Person:
         for i in range(0, len(lst), batch_size):
             yield lst[i:i + batch_size]
 
-    def _process_batch(self, context, input_text, candidate_responses, batch_size=16):
+    def _process_batch(self, context, input_text, candidate_responses, batch_size=16): # se ha de procesar por batchs para no saturar la memoria
         """
         Procesa un lote de candidatos y devuelve sus scores.
         """
@@ -173,7 +180,7 @@ class Person:
     
 
     ## aqui en el context ya se incluye la emocion y el problema
-    def find_best_response(self, context, input_text, candidate_responses, max_iterations=1):
+    def find_best_response(self, context, input_text, candidate_responses, max_iterations=1): # clusters de 150 y 100, 2 iteraciones es suficiente
         """
         Encuentra la mejor respuesta refinando la selección si hay demasiados empates.
         Usa un enfoque top-k para optimizar.
@@ -222,14 +229,14 @@ class Person:
     def get_best_response(self, emotion, sentiment, context, input_text):
         """Encuentra la mejor respuesta usando clustering"""
         
-        # 1. Truncar contexto para evitar límite de caracteres
+        # 1. Truncar contexto para evitar límite de caracteres, 3 turnos
         truncated_context = self._truncate_context(context)
         
         # 2. Obtener embedding del contexto + input con emotion y sentiment
         query_text = f"{emotion} [SEP] {sentiment} [SEP] {truncated_context} [SEP] {input_text}"
         query_embedding = self._get_embeddings([query_text])
         
-        # 3. Predecir el cluster más cercano
+        # 3. Predecir el cluster más cercano con los embeddings 
         closest_cluster = self.kmeans.predict(query_embedding)[0]
         
         # 4. Obtener candidatos solo de ese cluster
@@ -284,8 +291,11 @@ class Person:
         return np.vstack(all_embeddings)
     
     def _cluster_responses(self):
-        """Agrupa las respuestas en clusters (se hace 1 vez al inicio)"""
+        """Agrupa las respuestas en clusters (se hace 1 vez al inicio) para cada rol"""
         # print(f"Clustering {len(self.responses)} responses into {self.n_clusters} groups...")
+        # Personalizar el mensaje según la clase
+        class_name = self.__class__.__name__
+        print(f"Comenzando el clustering para {class_name}....")
         
         # Obtener embeddings de todas las respuestas
         response_embeddings = self._get_embeddings(self.responses)
@@ -299,6 +309,5 @@ class Person:
             if cluster_id not in self.response_clusters:
                 self.response_clusters[cluster_id] = []
             self.response_clusters[cluster_id].append(idx)
-        # Personalizar el mensaje según la clase
-        class_name = self.__class__.__name__
-        print(f"Clustering complete for {class_name}! Average responses per cluster: {len(self.responses) / self.n_clusters:.1f}")
+
+        print(f"Clustering completo para {class_name}! Promedio de respuestas por cluster: {len(self.responses) / self.n_clusters:.1f}")

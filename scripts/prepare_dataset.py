@@ -142,7 +142,7 @@ total_blocks = (count_experiences + BLOCK_SIZE - 1) // BLOCK_SIZE
 print(f"Procesando en {total_blocks} bloques de {BLOCK_SIZE} experiencias cada uno...")
 print(f"Tiempo estimado: ~{total_blocks * 2} minutos")
 
-for block_num in range(min(total_blocks, 5)):
+for block_num in range(min(total_blocks, 5)): # cambiar a total_blocks para procesar todo el dataset
     start_idx = block_num * BLOCK_SIZE
     end_idx = min(start_idx + BLOCK_SIZE, count_experiences)
     
@@ -170,7 +170,8 @@ for block_num in range(min(total_blocks, 5)):
             sentiment = turn['sentiment']
             
             if is_first_turn:
-                # Primer turno: contexto vacío, input del terapeuta
+                # Primer turno x dialogo: contexto vacío, input del terapeuta
+                # contextos e inputs vacios se gestionan en Person.py
                 context = f"[SYS]: {therapist_msg}"
                 
                 # Datos del paciente (respuesta al primer mensaje del terapeuta)
@@ -231,7 +232,7 @@ for block_num in range(min(total_blocks, 5)):
     # Guardar progreso cada bloque
     print(f"  Guardando progreso del bloque {block_num + 1}...")
     
-    # Guardar CSV temporal
+    # Guardar CSV temporal para reducir memoria y tiempo de ejecución
     temp_therapist_path = f"{PROCESSED_CSV_PATH_THERAPIST}.temp"
     temp_patient_path = f"{PROCESSED_CSV_PATH_PATIENT}.temp"
     

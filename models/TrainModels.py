@@ -42,7 +42,7 @@ class TrainModels:
         self.freezeLayer = freezeLayer
         self.early = early
         self.fill_nan = fill_nan
-        # Definir id2label y label2id aquí mismo
+        # Definir id2label y label2id
         self.label2id = {"pos": 1, "neg": 0}
         self.id2label = {1: "pos", 0: "neg"}
 
@@ -60,19 +60,18 @@ class TrainModels:
         self.train_tok = None
         self.test_tok = None
         
-
     def run_all(self):
         if self.fill_nan:
-            self.set_data() # iniciar una conversacion
-        self.split_data()
-        self.tokenize_data()
-        self.set_collator()
-        self.setModel()
-        self.freeze_layers()
-        self.setArgs()
-        self.trainer_()
-        self.save_show_metrics()
-        self.exportModel()
+            self.set_data() # tratar contextos e inputs vacios solo para Patient
+        self.split_data() # cargar el dataset, tratar duplicados y nulos, dividir en train y test
+        self.tokenize_data() # tokenizar el dataset por batchs para no saturar la memoria
+        self.set_collator() # configurar el collator para padding de tokens
+        self.setModel() # cargar el modelo según el rol y la versión
+        self.freeze_layers() # congelar capas del modelo para evitar overfitting
+        self.setArgs() # configurar los argumentos de entrenamiento
+        self.trainer_() # entrenar el modelo
+        self.save_show_metrics() # guardar y mostrar las métricas
+        self.exportModel() # exportar el modelo y el tokenizer
 
     def setModel(self):
         self.model = AutoModelForSequenceClassification.from_pretrained(
@@ -83,7 +82,7 @@ class TrainModels:
         )
 
     def freeze_layers(self):
-        if self.freezeLayer == 0:
+        if self.freezeLayer == 0: # no congelar capas
             return
         # congelar capas
         for param in self.model.bert.embeddings.parameters():
@@ -135,21 +134,22 @@ class TrainModels:
         self.trainer.train()
 
     def exportModel(self):
+        # exportar el modelo y el tokenizer
         self.model.save_pretrained(self.output_dir_model)
         self.tokenizer.save_pretrained(self.output_dir_model)
         print(f"Modelo y tokenizer guardados en: {self.output_dir_model}")
 
     def save_show_metrics(self):
+        # guardar y mostrar las métricas
         self.plot_metrics(self.trainer, self.output_dir_images)
         self.plot_confusion_matrix(self.trainer, self.test_tok, self.output_dir_images)
 
         print("\n==> Métricas en test:", self.trainer.evaluate())
-
     
     def getDF(self):
         ## cargar dataset
         df = pd.read_csv(self.dir_dataset)
-        df = df.drop_duplicates() #eliminar duplicados de los dos datasets
+        df = df.drop_duplicates() # eliminar duplicados de los dos datasets
         if self.fill_nan:
                 # Función local para obtener mensaje inicial
                 def get_initial_message(row):
@@ -191,10 +191,9 @@ class TrainModels:
 
     def split_data(self):
         df = self.getDF()
-        # df = df.iloc[0:100000] # solo 100k registros para entrenamiento.
-        X = df[["context", "input", "response","emotion","sentiment"]]
-        y = df["label"]
-
+        X = df[["context", "input", "response","emotion","sentiment"]] # seleccionar columnas
+        y = df["label"] # target
+        # separar train y test
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42
         )
@@ -209,7 +208,7 @@ class TrainModels:
         self.test_dataset = Dataset.from_pandas(pd.concat([X_test, y_test], axis=1))
 
     def tokenize(self, batch):
-        # Usar emotion y sentiment en lugar de problem
+        # Usar emotion y sentiment
         text_a = [f"{e} [SEP] {s} [SEP] {c} [SEP] {i}" for e, s, c, i in zip(batch["emotion"], batch["sentiment"], batch["context"], batch["input"])]
         return self.tokenizer(
             text_a,
@@ -230,12 +229,12 @@ class TrainModels:
         print(self.train_tok[0])
 
     def set_collator(self):
+        # configurar el collator para padding de tokens
         self.collator = DataCollatorWithPadding(tokenizer=self.tokenizer)
-
 
     def plot_confusion_matrix(self, trainer, test_dataset, output_dir_images):
         """
-        Genera y guarda la matriz de confusión en el test set.
+        Genera y guarda la matriz de confusión en el conjunto de test
         """
         preds = trainer.predict(test_dataset)
         y_true = preds.label_ids
@@ -300,7 +299,7 @@ class TrainModels:
 
     def test_model_responses(self, emotion, sentiment, context, input_text, candidate_responses):
         """
-        Evalúa múltiples respuestas candidatas y devuelve sus scores.
+        Evalúa múltiples respuestas candidatas y devuelve sus scores en los mini tests.
         """
         n = len(candidate_responses)
         responses = candidate_responses
@@ -326,13 +325,12 @@ class TrainModels:
         print(f"Scores: {scores}, Candidates: {len(candidate_responses)}")
         return list(zip(candidate_responses, scores))
 
-
     def run_mini_test(self, mini_tests):
         """
         Ejecuta el mini test con los diálogos proporcionados.
         
         Args:
-            mini_tests: Lista de diccionarios con 'context', 'input' y 'candidates'
+            mini_tests: Lista de diccionarios con 'emotion', 'sentiment', 'context', 'input' y 'candidates'
         """
         if not mini_tests:
             print("\nNo se proporcionaron mini tests.")
@@ -358,6 +356,9 @@ class TrainModels:
         print("\nMini test completado.")
     
     def set_data(self):
+        """
+        Establece los mensajes iniciales para cada emoción cuando el contexto o input están vacios.
+        """
         self.data = {
             "anxiety": [
                 "[SYS]: Hi, it seems you're feeling anxious. How can I support you today?",
