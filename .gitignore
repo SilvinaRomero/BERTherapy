@@ -4,9 +4,9 @@ data/raw/
 *.pt
 *.zip
 *.tar.gz
+*safetensors*
 
 venv/
 outputs-bert-imdb/
 outputs-bert-imdb*/
-models/bert_*/
 __pycache__/
