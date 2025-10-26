@@ -1,6 +1,7 @@
-data/
+data/processed/*full*.csv
+data/processed/*full*.txt
+data/raw/
 *.pt
-*.csv
 *.zip
 *.tar.gz
 
