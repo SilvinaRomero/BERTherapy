@@ -2,21 +2,38 @@ from TrainModels import TrainModels
 
 # la version es el numero de la version del modelo y de los graficos 
 # to do: cargar version desde el env, y actulizar a rutas dinamicas.
-config = {
-    "version": "1.0",
-    "num_train_epochs": 6,
-    "batch_size": 128, # para reducir el tiempo de entrenamiento, con un batch menor se tardaba demaciado.
-    "learning_rate": 2e-5,
-    "freezeLayer": 4,
-    "early": 3
-}
-
+# config = {
+#     "version": "1.0",
+#     "num_train_epochs": 6,
+#     "batch_size": 128, # para reducir el tiempo de entrenamiento, con un batch menor se tardaba demaciado.
+#     "learning_rate": 2e-5,
+#     "freezeLayer": 4,
+#     "early": 3
+# }
+# tests
+# config = {
+#     "version": "1.1",
+#     "num_train_epochs": 10,
+#     "batch_size": 128,
+#     "learning_rate": 2e-5,
+#     "freezeLayer": 4,
+#     "early": 3
+# }
+# config = {
+#     "version": "1.2",
+#     "num_train_epochs": 8,      # menos épocas → entrenamiento más corto
+#     "batch_size": 128,           # mitad → pasos más ruidosos
+#     "learning_rate": 3e-4,      # un poco más alto → convergencia distinta
+#     "freezeLayer": 2,           # menos capas congeladas → más capacidad
+#     "early": 2                  # paciencia más baja → puede parar antes
+# }
 def train_therapist(data=[]):
     therapist_trainer = TrainModels(
         dir_dataset="/home/silvina/proyectos/BERTherapy/data/processed/bertherapy_dataset_therapist_full.csv",
         output_dir_images=f"/home/silvina/proyectos/BERTherapy/images/train_therapist_v{config['version']}",
         output_dir_model=f"models/bert_therapist_v{config['version']}",
         check_dir_model=f"outputs-bert-imdb-therapist_v{config['version']}",
+        output_dir_tensorboard=f"/home/silvina/proyectos/BERTherapy/tensorboard/therapist/train_therapist_v{config['version']}",
         num_train_epochs=config["num_train_epochs"],
         batch_size=config["batch_size"],
         learning_rate=config["learning_rate"],
@@ -37,6 +54,7 @@ def train_patient(data=[]):
         output_dir_images=f"/home/silvina/proyectos/BERTherapy/images/train_patient_v{config['version']}",
         output_dir_model=f"models/bert_patient_v{config['version']}",
         check_dir_model=f"outputs-bert-imdb-patient_v{config['version']}",
+        output_dir_tensorboard=f"/home/silvina/proyectos/BERTherapy/tensorboard/patient/train_patient_v{config['version']}",
         num_train_epochs=config["num_train_epochs"],
         batch_size=config["batch_size"],
         learning_rate=config["learning_rate"],
@@ -115,7 +133,8 @@ print("=" * 80 + "\n")
 print("=" * 80)
 print("  ENTRENAMIENTO DE TERAPEUTA")
 print("=" * 80)
-train_therapist(data=test_therapist) # train_therapist() para no realizar el mini test
+train_therapist()
+# train_therapist(data=test_therapist) # train_therapist() para no realizar el mini test
 
 print("\n" + "=" * 80)
 print("  ✓ TERAPEUTA COMPLETADO")
@@ -124,7 +143,8 @@ print("=" * 80 + "\n")
 print("=" * 80)
 print("  ENTRENAMIENTO DE PACIENTE")
 print("=" * 80)
-train_patient(data=test_patient) # train_patient() para no realizar el mini test
+train_patient() # train_patient() para no realizar el mini test
+# train_patient(data=test_patient) # train_patient() para no realizar el mini test
 
 print("\n" + "=" * 80)
 print("  ✓ PACIENTE COMPLETADO")

@@ -25,6 +25,7 @@ class TrainModels:
         output_dir_images,
         output_dir_model,
         check_dir_model,
+        output_dir_tensorboard,
         num_train_epochs,
         batch_size,
         learning_rate,
@@ -36,6 +37,7 @@ class TrainModels:
         self.output_dir_images = output_dir_images
         self.output_dir_model = output_dir_model
         self.check_dir_model = check_dir_model
+        self.output_dir_tensorboard = output_dir_tensorboard # "tensorboard --logdir /home/silvina/proyectos/BERTherapy/tensorboard/(?:therapist|patient)/
         self.epochs = num_train_epochs
         self.batch = batch_size
         self.learning_rate = learning_rate
@@ -46,8 +48,11 @@ class TrainModels:
         self.label2id = {"pos": 1, "neg": 0}
         self.id2label = {1: "pos", 0: "neg"}
 
-        # crear carpeta de salida de graficos
+        # crear carpetas de salida
         os.makedirs(self.output_dir_images, exist_ok=True)
+        os.makedirs(self.output_dir_tensorboard, exist_ok=True)
+        os.makedirs(self.output_dir_model, exist_ok=True)
+        os.makedirs(self.check_dir_model, exist_ok=True)
 
         self.data = None
         self.train_dataset = None
@@ -102,14 +107,15 @@ class TrainModels:
             eval_strategy="epoch",  # Evalúa al final de cada época
             save_strategy="epoch",  # Guarda checkpoint al final de cada época
             logging_steps=50,  # Registra logs cada 50 pasos
+            logging_dir=self.output_dir_tensorboard,  # Directorio donde guardar los logs de TensorBoard
             learning_rate=self.learning_rate,  # Learning rate inicial
             weight_decay=0.01,  # L2 weight decay (regularización)
             fp16=use_cuda,  # Usa float16 si hay GPU compatible
             load_best_model_at_end=True,  # Carga mejor modelo (eval_loss más bajo)
+            report_to=["tensorboard"],  # Reporta a TensorBoard
             metric_for_best_model="eval_loss",  # Métrica para mejor modelo
             greater_is_better=False,  # eval_loss, así que menor es mejor
             seed=42,  # Semilla
-            report_to="none",  # No reporta a Wandb u otros
             save_total_limit=3,  # Solo guarda los 3 mejores checkpoints
             save_safetensors=True,  # Guarda checkpoints en formato seguro
         )
@@ -120,6 +126,9 @@ class TrainModels:
         acc = (preds == labels).mean().item()
         return {"accuracy": float(acc)}
 
+    def getEarlyStoppingCallback(self):
+        return EarlyStoppingCallback(early_stopping_patience=self.early)
+
     def trainer_(self):
         self.trainer = Trainer(
             model=self.model,
@@ -129,7 +138,7 @@ class TrainModels:
             tokenizer=self.tokenizer,
             data_collator=self.collator,
             compute_metrics=self.compute_metrics,
-            callbacks=[EarlyStoppingCallback(early_stopping_patience=self.early)],
+            callbacks=[self.getEarlyStoppingCallback()],
         )
         self.trainer.train()
 
