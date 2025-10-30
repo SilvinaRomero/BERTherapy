@@ -1,7 +1,18 @@
 from TrainModels import TrainModels
+import json
+
+# cargar la configuracion del terapeuta (guardada con optuna)
+with open('config/therapist.json', 'r') as file:
+    config_therapist = json.load(file)
+
+print(config_therapist)
+
+with open('config/patient.json', 'r') as file:
+    config_patient = json.load(file)
+
+print(config_patient)
 
 # la version es el numero de la version del modelo y de los graficos 
-# to do: cargar version desde el env, y actulizar a rutas dinamicas.
 # config = {
 #     "version": "1.0",
 #     "num_train_epochs": 6,
@@ -10,61 +21,54 @@ from TrainModels import TrainModels
 #     "freezeLayer": 4,
 #     "early": 3
 # }
-# tests
-# config = {
-#     "version": "1.1",
-#     "num_train_epochs": 10,
-#     "batch_size": 128,
-#     "learning_rate": 2e-5,
-#     "freezeLayer": 4,
-#     "early": 3
-# }
-# config = {
-#     "version": "1.2",
-#     "num_train_epochs": 8,      # menos épocas → entrenamiento más corto
-#     "batch_size": 128,           # mitad → pasos más ruidosos
-#     "learning_rate": 3e-4,      # un poco más alto → convergencia distinta
-#     "freezeLayer": 2,           # menos capas congeladas → más capacidad
-#     "early": 2                  # paciencia más baja → puede parar antes
-# }
+
 def train_therapist(data=[]):
     therapist_trainer = TrainModels(
         dir_dataset="/home/silvina/proyectos/BERTherapy/data/processed/bertherapy_dataset_therapist_full.csv",
-        output_dir_images=f"/home/silvina/proyectos/BERTherapy/images/train_therapist_v{config['version']}",
-        output_dir_model=f"models/bert_therapist_v{config['version']}",
-        check_dir_model=f"outputs-bert-imdb-therapist_v{config['version']}",
-        output_dir_tensorboard=f"/home/silvina/proyectos/BERTherapy/tensorboard/therapist/train_therapist_v{config['version']}",
-        num_train_epochs=config["num_train_epochs"],
-        batch_size=config["batch_size"],
-        learning_rate=config["learning_rate"],
-        freezeLayer=config["freezeLayer"],
-        early=config["early"],
+        output_dir_images=f"/home/silvina/proyectos/BERTherapy/images/train_therapist_v{config_therapist['version']}",
+        output_dir_model=f"models/bert_therapist_v{config_therapist['version']}",
+        check_dir_model=f"outputs-bert-imdb-therapist_v{config_therapist['version']}",
+        output_dir_tensorboard=f"/home/silvina/proyectos/BERTherapy/tensorboard/therapist/train_therapist_v{config_therapist['version']}",
+        num_train_epochs=config_therapist["num_train_epochs"],
+        batch_size=config_therapist["batch_size"],
+        learning_rate=config_therapist["learning_rate"],
+        freezeLayer=config_therapist["freezeLayer"],
+        early=config_therapist["early"],
         fill_nan=False,
     )
 
     # Ejecutar todo el pipeline
     therapist_trainer.run_all()
+    ## recuperar accuracy
+    accuracy = therapist_trainer.trainer.evaluate()
+    print(f"Accuracy del terapeuta: {accuracy}")
     if len(data) > 0:
         # mostrar test
         therapist_trainer.run_mini_test(data)
 
+
+
+
 def train_patient(data=[]):
     patient_trainer = TrainModels(
         dir_dataset="/home/silvina/proyectos/BERTherapy/data/processed/bertherapy_dataset_patient_full.csv",
-        output_dir_images=f"/home/silvina/proyectos/BERTherapy/images/train_patient_v{config['version']}",
-        output_dir_model=f"models/bert_patient_v{config['version']}",
-        check_dir_model=f"outputs-bert-imdb-patient_v{config['version']}",
-        output_dir_tensorboard=f"/home/silvina/proyectos/BERTherapy/tensorboard/patient/train_patient_v{config['version']}",
-        num_train_epochs=config["num_train_epochs"],
-        batch_size=config["batch_size"],
-        learning_rate=config["learning_rate"],
-        freezeLayer=config["freezeLayer"],
-        early=config["early"],
+        output_dir_images=f"/home/silvina/proyectos/BERTherapy/images/train_patient_v{config_patient['version']}",
+        output_dir_model=f"models/bert_patient_v{config_patient['version']}",
+        check_dir_model=f"outputs-bert-imdb-patient_v{config_patient['version']}",
+        output_dir_tensorboard=f"/home/silvina/proyectos/BERTherapy/tensorboard/patient/train_patient_v{config_patient['version']}",
+        num_train_epochs=config_patient["num_train_epochs"],
+        batch_size=config_patient["batch_size"],
+        learning_rate=config_patient["learning_rate"],
+        freezeLayer=config_patient["freezeLayer"],
+        early=config_patient["early"],
         fill_nan=True,
     )
 
     # Ejecutar todo el pipeline
     patient_trainer.run_all()
+    ## recuperar accuracy
+    accuracy = patient_trainer.trainer.evaluate()
+    print(f"Accuracy del paciente: {accuracy}")
     if len(data) > 0:
         # mostrar test
         patient_trainer.run_mini_test(data)
@@ -125,8 +129,8 @@ test_patient = [
     },
 ]
 
-print(f"  CONFIGURACIÓN VERSIÓN: {config['version']}\n  ")
-for key, value in config.items():
+print(f"  CONFIGURACIÓN VERSIÓN: {config_therapist['version']}\n  ")
+for key, value in config_therapist.items():
     print(f"  {key}: {value}")
 print("=" * 80 + "\n")
 
@@ -140,6 +144,10 @@ print("\n" + "=" * 80)
 print("  ✓ TERAPEUTA COMPLETADO")
 print("=" * 80 + "\n")
 
+print(f"  CONFIGURACIÓN VERSIÓN: {config_patient['version']}\n  ")
+for key, value in config_patient.items():
+    print(f"  {key}: {value}")
+print("=" * 80 + "\n")
 print("=" * 80)
 print("  ENTRENAMIENTO DE PACIENTE")
 print("=" * 80)
