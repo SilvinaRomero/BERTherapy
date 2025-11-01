@@ -6,7 +6,7 @@ import json
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-# Obtener la configuración del terapeuta (guardada con optuna)
+# Obtener la configuración del paciente (guardada con optuna)
 with open(os.path.join(PROJECT_ROOT, "models", "config", "patient.json"), "r") as file:
     config_patient = json.load(file)
 
