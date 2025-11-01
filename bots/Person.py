@@ -5,6 +5,9 @@ import numpy as np
 import random
 import os
 
+# Obtener la ruta del directorio del proyecto (BERTherapy)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 class Person:
     def __init__(self, dir_model, dir_pool, max_pool_size=10000, n_clusters=100): # ~ pool de 50 respuestas
         self.dir_model = dir_model
@@ -42,9 +45,9 @@ class Person:
         """
         class_name = self.__class__.__name__.lower()
         if class_name == "therapist":
-            return "/home/silvina/proyectos/BERTherapy/used_reponses_therapist.txt"
+            return os.path.join(PROJECT_ROOT, "used_reponses_therapist.txt")
         elif class_name == "patient":
-            return "/home/silvina/proyectos/BERTherapy/used_reponses_patient.txt"
+            return os.path.join(PROJECT_ROOT, "used_reponses_patient.txt")
     
     def _load_used_responses(self):
         """Carga las respuestas ya usadas desde el archivo"""

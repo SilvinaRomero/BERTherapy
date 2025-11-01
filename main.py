@@ -2,6 +2,9 @@ from bots.Therapist import Therapist
 from bots.Patient import Patient
 import os
 
+# Obtener la ruta del directorio del proyecto (BERTherapy)
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+
 # Emociones del dataset
 emotions = [
     "joy",
@@ -29,8 +32,8 @@ def cleanup_used_responses():
        Se crean en Person.py al crear los clusters de respuestas.
     """
     files_to_clean = [
-        "/home/silvina/proyectos/BERTherapy/used_reponses_therapist.txt",
-        "/home/silvina/proyectos/BERTherapy/used_reponses_patient.txt"
+        os.path.join(PROJECT_ROOT, "used_reponses_therapist.txt"),
+        os.path.join(PROJECT_ROOT, "used_reponses_patient.txt")
     ]
     
     for file_path in files_to_clean:
