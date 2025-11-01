@@ -8,14 +8,14 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def optimize(n_trials=10, type="therapist"):
     def objective(trial):
-        # --- Sugerir hiperparámetros ---
+        # # --- Sugerir hiperparámetros ---
         config = {
             "version": f"{trial.number}",
-            "num_train_epochs": trial.suggest_int("num_train_epochs", 4, 8),
-            "batch_size": trial.suggest_categorical("batch_size", [64,128]),
+            "num_train_epochs": trial.suggest_int("num_train_epochs", 3, 8),
+            "batch_size": trial.suggest_categorical("batch_size", [64, 128]),
             "learning_rate": trial.suggest_float("learning_rate", 1e-5, 5e-5, log=True),
-            "freezeLayer": trial.suggest_int("freezeLayer", 0, 3),
-            "early": trial.suggest_int("early", 2, 3),
+            "freezeLayer": trial.suggest_int("freezeLayer", 0, 6),
+            "early": trial.suggest_int("early", 2, 4),
         }
 
         print(f"\nTRIAL {trial.number} | Config: {config}")
@@ -68,13 +68,16 @@ def optimize(n_trials=10, type="therapist"):
 
     return study
 
-types = ["therapist", "patient"]
+types = [
+    "therapist", 
+    "patient",
+]
 for type_val in types:
     print("\n" + "="*80)
     print(f"  OPTIMIZACIÓN Y ENTRENAMIENTO DE {type_val.upper()}")
     print("="*80 + "\n")
     
-    study = optimize(n_trials=2, type=type_val)
+    study = optimize(n_trials=15, type=type_val)
     best_params = study.best_params
     
     print("\n" + "="*80)
