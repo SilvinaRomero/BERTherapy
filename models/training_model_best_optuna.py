@@ -1,6 +1,10 @@
 import optuna
 import json
+import os
 from TrainModels import TrainModels
+
+# Obtener la ruta del directorio del proyecto (BERTherapy)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def optimize(n_trials=10, type="therapist"):
     def objective(trial):
@@ -18,11 +22,11 @@ def optimize(n_trials=10, type="therapist"):
 
         # --- Instanciar y entrenar ---
         trainer = TrainModels(
-            dir_dataset=f"/home/silvina/proyectos/BERTherapy/data/processed/bertherapy_dataset_{type}_full.csv",
-            output_dir_images=f"/home/silvina/proyectos/BERTherapy/images/train_{type}_v{config['version']}",
-            output_dir_model=f"models/bert_{type}_v{config['version']}",
-            check_dir_model=f"outputs-bert-imdb-{type}_v{config['version']}",
-            output_dir_tensorboard=f"/home/silvina/proyectos/BERTherapy/tensorboard/{type}/train_{type}_v{config['version']}",
+            dir_dataset=os.path.join(PROJECT_ROOT, f"data/processed/bertherapy_dataset_{type}_full.csv"),
+            output_dir_images=os.path.join(PROJECT_ROOT, f"images/train_{type}_v{config['version']}"),
+            output_dir_model=os.path.join(PROJECT_ROOT, f"models/bert_{type}_v{config['version']}"),
+            check_dir_model=os.path.join(PROJECT_ROOT, f"outputs-bert-imdb-{type}_v{config['version']}"),
+            output_dir_tensorboard=os.path.join(PROJECT_ROOT, f"tensorboard/{type}/train_{type}_v{config['version']}"),
             num_train_epochs=config["num_train_epochs"],
             batch_size=config["batch_size"],
             learning_rate=config["learning_rate"],
@@ -90,40 +94,12 @@ for type_val in types:
         "early": best_params["early"],
     }
 
-    # guardar los mejores hiperparámetros en un archivo json (therapist.json o patient.json)
-    with open(f"/home/silvina/proyectos/BERTherapy/models/config/{type_val}.json", "w") as file:
+    # sobreescribir los mejores hiperparámetros en un archivo json (therapist.json o patient.json)
+    config_path = os.path.join(PROJECT_ROOT, f"models/config/{type_val}.json")
+    with open(config_path, "w") as file:
         json.dump(config_to_save, file, indent=4)
-    print(f"✓ Configuración guardada en /home/silvina/proyectos/BERTherapy/models/config/{type_val}.json\n")
+    print(f"✓ Configuración guardada en {config_path}\n")
+    print(f"✓ Mejor modelo ya guardado en: models/bert_{type_val}_v{config_to_save['version']}\n")
 
-    print("="*80)
-    print(f"  ENTRENAMIENTO FINAL CON MEJORES HIPERPARÁMETROS ({type_val.upper()})")
-    print("="*80)
-    print(f"  CONFIGURACIÓN VERSIÓN: {config_to_save['version']}\n  ")
-    for key, value in config_to_save.items():
-        print(f"  {key}: {value}")
-    print("="*80 + "\n")
     
-    # como ya tenemos los mejores hiperparámetros, entrenamos el modelo con los mejores hiperparámetros
-    trainer = TrainModels(
-        dir_dataset=f"/home/silvina/proyectos/BERTherapy/data/processed/bertherapy_dataset_{type_val}_full.csv",
-        output_dir_images=f"/home/silvina/proyectos/BERTherapy/images/train_{type_val}_v{config_to_save['version']}",
-        output_dir_model=f"models/bert_{type_val}_v{config_to_save['version']}",
-        check_dir_model=f"outputs-bert-imdb-{type_val}_v{config_to_save['version']}",
-        output_dir_tensorboard=f"/home/silvina/proyectos/BERTherapy/tensorboard/{type_val}/train_{type_val}_v{config_to_save['version']}",
-        num_train_epochs=config_to_save["num_train_epochs"],
-        batch_size=config_to_save["batch_size"],
-        learning_rate=config_to_save["learning_rate"],
-        freezeLayer=config_to_save["freezeLayer"],
-        early=config_to_save["early"],
-        fill_nan=(type_val == "patient"),  # patient needs fill_nan=True
-    )
-    trainer.run_all()
-    # recuperar accuracy
-    accuracy_metrics = trainer.trainer.evaluate()
-    eval_acc = accuracy_metrics.get("eval_accuracy", accuracy_metrics.get("accuracy", 0.0))
-    
-    print("\n" + "="*80)
-    print(f"  ✓ {type_val.upper()} COMPLETADO")
-    print(f"  Accuracy final: {eval_acc:.4f}")
-    print("="*80 + "\n")
     
