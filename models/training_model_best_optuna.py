@@ -1,13 +1,17 @@
-def optimize(n_trials=10,type):
+import optuna
+import json
+from TrainModels import TrainModels
+
+def optimize(n_trials=10, type="therapist"):
     def objective(trial):
         # --- Sugerir hiperparámetros ---
         config = {
             "version": f"{trial.number}",
-            "num_train_epochs": trial.suggest_int("num_train_epochs", 6, 12),
-            "batch_size": trial.suggest_categorical("batch_size", [64, 128, 256]),
+            "num_train_epochs": trial.suggest_int("num_train_epochs", 4, 8),
+            "batch_size": trial.suggest_categorical("batch_size", [64,128]),
             "learning_rate": trial.suggest_float("learning_rate", 1e-5, 5e-5, log=True),
-            "freezeLayer": trial.suggest_int("freezeLayer", 0, 6),
-            "early": trial.suggest_int("early", 2, 5),
+            "freezeLayer": trial.suggest_int("freezeLayer", 0, 3),
+            "early": trial.suggest_int("early", 2, 3),
         }
 
         print(f"\nTRIAL {trial.number} | Config: {config}")
@@ -24,7 +28,7 @@ def optimize(n_trials=10,type):
             learning_rate=config["learning_rate"],
             freezeLayer=config["freezeLayer"],
             early=config["early"],
-            fill_nan=False,
+            fill_nan=(type == "patient"),  # patient needs fill_nan=True
         )
 
         # Ejecutar entrenamiento completo
@@ -32,7 +36,7 @@ def optimize(n_trials=10,type):
 
         # --- Obtener métrica de validación ---
         metrics = trainer.trainer.evaluate()
-        val_acc = metrics.get("eval_accuracy", 0.0)
+        val_acc = metrics.get("eval_accuracy", metrics.get("accuracy", 0.0))
 
         print(f"TRIAL {type.upper()}: {trial.number} → eval_accuracy = {val_acc:.4f}")
 
@@ -61,40 +65,65 @@ def optimize(n_trials=10,type):
     return study
 
 types = ["therapist", "patient"]
-for type in types:
-   study = optimize(n_trials=10, type=type)
-   best_params = study.best_params
-   print(f"MEJOR CONFIGURACIÓN ({type.upper()}): {best_params}")
-   print(f"MEJOR EVAL_ACCURACY ({type.upper()}): {study.best_value:.4f}")
-   print("="*60)
-   config_to_save = {
-    "version": f"{study.best_trial.number}",
-    "num_train_epochs": best_params["num_train_epochs"],
-    "batch_size": best_params["batch_size"],
-    "learning_rate": best_params["learning_rate"],
-    "freezeLayer": best_params["freezeLayer"],
-    "early": best_params["early"],
+for type_val in types:
+    print("\n" + "="*80)
+    print(f"  OPTIMIZACIÓN Y ENTRENAMIENTO DE {type_val.upper()}")
+    print("="*80 + "\n")
+    
+    study = optimize(n_trials=2, type=type_val)
+    best_params = study.best_params
+    
+    print("\n" + "="*80)
+    print(f"  MEJOR CONFIGURACIÓN ENCONTRADA ({type_val.upper()})")
+    print("="*80)
+    for k, v in best_params.items():
+        print(f"  {k}: {v}")
+    print(f"  Mejor eval_accuracy: {study.best_value:.4f}")
+    print("="*80 + "\n")
+    
+    config_to_save = {
+        "version": f"{study.best_trial.number}",
+        "num_train_epochs": best_params["num_train_epochs"],
+        "batch_size": best_params["batch_size"],
+        "learning_rate": best_params["learning_rate"],
+        "freezeLayer": best_params["freezeLayer"],
+        "early": best_params["early"],
     }
 
-   # guardar los mejores hiperparámetros en un archivo json
-   with open(f"config/best_{type}.json", "w") as file:
-      json.dump(config_to_save, file, indent=4)
+    # guardar los mejores hiperparámetros en un archivo json (therapist.json o patient.json)
+    with open(f"/home/silvina/proyectos/BERTherapy/models/config/{type_val}.json", "w") as file:
+        json.dump(config_to_save, file, indent=4)
+    print(f"✓ Configuración guardada en /home/silvina/proyectos/BERTherapy/models/config/{type_val}.json\n")
 
+    print("="*80)
+    print(f"  ENTRENAMIENTO FINAL CON MEJORES HIPERPARÁMETROS ({type_val.upper()})")
+    print("="*80)
+    print(f"  CONFIGURACIÓN VERSIÓN: {config_to_save['version']}\n  ")
+    for key, value in config_to_save.items():
+        print(f"  {key}: {value}")
+    print("="*80 + "\n")
+    
     # como ya tenemos los mejores hiperparámetros, entrenamos el modelo con los mejores hiperparámetros
     trainer = TrainModels(
-        dir_dataset=f"/home/silvina/proyectos/BERTherapy/data/processed/bertherapy_dataset_{type}_full.csv",
-        output_dir_images=f"/home/silvina/proyectos/BERTherapy/images/train_{type}_v{config_to_save['version']}",
-        output_dir_model=f"models/bert_{type}_v{config_to_save['version']}",
-        check_dir_model=f"outputs-bert-imdb-{type}_v{config_to_save['version']}",
-        output_dir_tensorboard=f"/home/silvina/proyectos/BERTherapy/tensorboard/{type}/train_{type}_v{config_to_save['version']}",
+        dir_dataset=f"/home/silvina/proyectos/BERTherapy/data/processed/bertherapy_dataset_{type_val}_full.csv",
+        output_dir_images=f"/home/silvina/proyectos/BERTherapy/images/train_{type_val}_v{config_to_save['version']}",
+        output_dir_model=f"models/bert_{type_val}_v{config_to_save['version']}",
+        check_dir_model=f"outputs-bert-imdb-{type_val}_v{config_to_save['version']}",
+        output_dir_tensorboard=f"/home/silvina/proyectos/BERTherapy/tensorboard/{type_val}/train_{type_val}_v{config_to_save['version']}",
         num_train_epochs=config_to_save["num_train_epochs"],
         batch_size=config_to_save["batch_size"],
         learning_rate=config_to_save["learning_rate"],
         freezeLayer=config_to_save["freezeLayer"],
         early=config_to_save["early"],
-        fill_nan=False,
+        fill_nan=(type_val == "patient"),  # patient needs fill_nan=True
     )
     trainer.run_all()
-    ## recuperar accuracy
-    accuracy = trainer.trainer.evaluate()
-    print(f"Accuracy del {type.upper()}: {accuracy['eval_accuracy']:.4f }")
+    # recuperar accuracy
+    accuracy_metrics = trainer.trainer.evaluate()
+    eval_acc = accuracy_metrics.get("eval_accuracy", accuracy_metrics.get("accuracy", 0.0))
+    
+    print("\n" + "="*80)
+    print(f"  ✓ {type_val.upper()} COMPLETADO")
+    print(f"  Accuracy final: {eval_acc:.4f}")
+    print("="*80 + "\n")
+    
