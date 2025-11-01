@@ -36,20 +36,20 @@ def optimize(n_trials=10, type="therapist"):
 
         # --- Obtener métrica de validación ---
         metrics = trainer.trainer.evaluate()
-        val_acc = metrics.get("eval_accuracy", metrics.get("accuracy", 0.0))
+        val_loss = metrics.get("eval_loss", float('inf'))
 
-        print(f"TRIAL {type.upper()}: {trial.number} → eval_accuracy = {val_acc:.4f}")
+        print(f"TRIAL {type.upper()}: {trial.number} → eval_loss = {val_loss:.4f}")
 
         # Opcional: podar trials malos
-        trial.report(val_acc, step=config["num_train_epochs"])
+        trial.report(val_loss, step=config["num_train_epochs"])
         if trial.should_prune():
             raise optuna.TrialPruned()
 
-        return val_acc
+        return val_loss
 
     # --- Ejecutar estudio ---
     study = optuna.create_study(
-        direction="maximize",
+        direction="minimize",
         pruner=optuna.pruners.MedianPruner(n_startup_trials=5, n_warmup_steps=2)
     )
     study.optimize(objective, n_trials=n_trials)
@@ -59,7 +59,7 @@ def optimize(n_trials=10, type="therapist"):
     print("="*60)
     for k, v in study.best_params.items():
         print(f"  {k}: {v}")
-    print(f"  Mejor eval_accuracy: {study.best_value:.4f}")
+    print(f"  Mejor eval_loss: {study.best_value:.4f}")
     print("="*60)
 
     return study
@@ -78,7 +78,7 @@ for type_val in types:
     print("="*80)
     for k, v in best_params.items():
         print(f"  {k}: {v}")
-    print(f"  Mejor eval_accuracy: {study.best_value:.4f}")
+    print(f"  Mejor eval_loss: {study.best_value:.4f}")
     print("="*80 + "\n")
     
     config_to_save = {
