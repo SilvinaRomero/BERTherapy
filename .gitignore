@@ -10,3 +10,11 @@ venv/
 outputs-bert-imdb/
 outputs-bert-imdb*/
 __pycache__/
+
+# trials
+models/bert_therapist_v[0-15]*/
+models/bert_patient_v[0-15]*/
+images/train_therapist_v[0-15]*/
+images/train_patient_v[0-15]*/
+tensorboard/therapist/train_therapist_v[0-15]*/
+tensorboard/patient/train_patient_v[0-15]*/
