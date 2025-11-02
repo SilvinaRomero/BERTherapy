@@ -1,0 +1,8 @@
+{
+    "version": "14",
+    "num_train_epochs": 4,
+    "batch_size": 128,
+    "learning_rate": 4.143506832436894e-05,
+    "freezeLayer": 2,
+    "early": 3
+}
