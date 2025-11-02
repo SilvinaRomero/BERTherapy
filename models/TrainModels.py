@@ -188,14 +188,14 @@ class TrainModels:
                 df["context"] = df.apply(lambda row: get_initial_message(row) if pd.isna(row["context"]) or row["context"] == "" else row["context"], axis=1)
                 df["input"] = df.apply(lambda row: get_initial_message(row) if pd.isna(row["input"]) or row["input"] == "" else row["input"], axis=1)
 
-        print("\nForma del dataset:")
-        print(df.shape)
-        print("\nValores nulos:")
-        print(df.isnull().sum())
-        print("\nDuplicados:")
-        print(df.duplicated().sum())
-        print("\nPrimeras filas:")
-        print(df.head())
+        # print("\nForma del dataset:")
+        # print(df.shape)
+        # print("\nValores nulos:")
+        # print(df.isnull().sum())
+        # print("\nDuplicados:")
+        # print(df.duplicated().sum())
+        # print("\nPrimeras filas:")
+        # print(df.head())
         return df
 
     def split_data(self):
@@ -206,11 +206,11 @@ class TrainModels:
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42
         )
-        print("\nTamaño train:")
-        print(X_train.shape, X_test.shape)
-        print("\nTamaño test:")
-        print(y_train.value_counts(), y_test.value_counts())
-        print("*" * 80)
+        # print("\nTamaño train:")
+        # print(X_train.shape, X_test.shape)
+        # print("\nTamaño test:")
+        # print(y_train.value_counts(), y_test.value_counts())
+        # print("*" * 80)
 
         # convertir a datasets
         self.train_dataset = Dataset.from_pandas(pd.concat([X_train, y_train], axis=1))
@@ -231,11 +231,11 @@ class TrainModels:
         self.tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
         self.train_tok = self.train_dataset.map(self.tokenize, batched=True)
         self.test_tok = self.test_dataset.map(self.tokenize, batched=True)
-        print("\ntrain-test:")
-        print(self.train_tok)
-        print(self.test_tok)
-        print("\nMuestra de tokenización:")
-        print(self.train_tok[0])
+        # print("\ntrain-test:")
+        # print(self.train_tok)
+        # print(self.test_tok)
+        # print("\nMuestra de tokenización:")
+        # print(self.train_tok[0])
 
     def set_collator(self):
         # configurar el collator para padding de tokens
