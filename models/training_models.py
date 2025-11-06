@@ -1,13 +1,20 @@
 from TrainModels import TrainModels
 import json
+import os
+
+# Obtener la ruta del directorio del proyecto (BERTherapy)
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # cargar la configuracion del terapeuta (guardada con optuna)
-with open('config/therapist.json', 'r') as file:
+config_path_therapist = os.path.join(PROJECT_ROOT, "models", "config", "therapist_test.json")
+with open(config_path_therapist, 'r') as file:
     config_therapist = json.load(file)
 
 print(config_therapist)
 
-with open('config/patient.json', 'r') as file:
+# cargar la configuracion del paciente (guardada con optuna)
+config_path_patient = os.path.join(PROJECT_ROOT, "models", "config", "patient_test.json")
+with open(config_path_patient, 'r') as file:
     config_patient = json.load(file)
 
 print(config_patient)
@@ -19,22 +26,24 @@ print(config_patient)
 #     "batch_size": 128, # para reducir el tiempo de entrenamiento, con un batch menor se tardaba demaciado.
 #     "learning_rate": 2e-5,
 #     "freezeLayer": 4,
-#     "early": 3
+#     "early": 3,
+#     "weight_decay": 0.01
 # }
 
 def train_therapist(data=[]):
     therapist_trainer = TrainModels(
-        dir_dataset="/home/silvina/proyectos/BERTherapy/data/processed/bertherapy_dataset_therapist_full.csv",
-        output_dir_images=f"/home/silvina/proyectos/BERTherapy/images/train_therapist_v{config_therapist['version']}",
-        output_dir_model=f"models/bert_therapist_v{config_therapist['version']}",
-        check_dir_model=f"outputs-bert-imdb-therapist_v{config_therapist['version']}",
-        output_dir_tensorboard=f"/home/silvina/proyectos/BERTherapy/tensorboard/therapist/train_therapist_v{config_therapist['version']}",
+        dir_dataset=os.path.join(PROJECT_ROOT, "data/processed/bertherapy_dataset_therapist_full.csv"),
+        output_dir_images=os.path.join(PROJECT_ROOT, f"images/train_therapist_v{config_therapist['version']}"),
+        output_dir_model=os.path.join(PROJECT_ROOT, f"models/bert_therapist_v{config_therapist['version']}"),
+        check_dir_model=os.path.join(PROJECT_ROOT, f"outputs-bert-imdb-therapist_v{config_therapist['version']}"),
+        output_dir_tensorboard=os.path.join(PROJECT_ROOT, f"tensorboard/therapist/train_therapist_v{config_therapist['version']}"),
         num_train_epochs=config_therapist["num_train_epochs"],
         batch_size=config_therapist["batch_size"],
         learning_rate=config_therapist["learning_rate"],
         freezeLayer=config_therapist["freezeLayer"],
         early=config_therapist["early"],
         fill_nan=False,
+        weight_decay=config_therapist["weight_decay"],
     )
 
     # Ejecutar todo el pipeline
@@ -51,17 +60,18 @@ def train_therapist(data=[]):
 
 def train_patient(data=[]):
     patient_trainer = TrainModels(
-        dir_dataset="/home/silvina/proyectos/BERTherapy/data/processed/bertherapy_dataset_patient_full.csv",
-        output_dir_images=f"/home/silvina/proyectos/BERTherapy/images/train_patient_v{config_patient['version']}",
-        output_dir_model=f"models/bert_patient_v{config_patient['version']}",
-        check_dir_model=f"outputs-bert-imdb-patient_v{config_patient['version']}",
-        output_dir_tensorboard=f"/home/silvina/proyectos/BERTherapy/tensorboard/patient/train_patient_v{config_patient['version']}",
+        dir_dataset=os.path.join(PROJECT_ROOT, "data/processed/bertherapy_dataset_patient_full.csv"),
+        output_dir_images=os.path.join(PROJECT_ROOT, f"images/train_patient_v{config_patient['version']}"),
+        output_dir_model=os.path.join(PROJECT_ROOT, f"models/bert_patient_v{config_patient['version']}"),
+        check_dir_model=os.path.join(PROJECT_ROOT, f"outputs-bert-imdb-patient_v{config_patient['version']}"),
+        output_dir_tensorboard=os.path.join(PROJECT_ROOT, f"tensorboard/patient/train_patient_v{config_patient['version']}"),
         num_train_epochs=config_patient["num_train_epochs"],
         batch_size=config_patient["batch_size"],
         learning_rate=config_patient["learning_rate"],
         freezeLayer=config_patient["freezeLayer"],
         early=config_patient["early"],
         fill_nan=True,
+        weight_decay=config_patient["weight_decay"],
     )
 
     # Ejecutar todo el pipeline
