@@ -31,7 +31,8 @@ class TrainModels:
         learning_rate,
         freezeLayer,
         early,
-        fill_nan
+        fill_nan,
+        weight_decay
     ):
         self.dir_dataset = dir_dataset
         self.output_dir_images = output_dir_images
@@ -44,6 +45,7 @@ class TrainModels:
         self.freezeLayer = freezeLayer
         self.early = early
         self.fill_nan = fill_nan
+        self.weight_decay = weight_decay
         # Definir id2label y label2id
         self.label2id = {"pos": 1, "neg": 0}
         self.id2label = {1: "pos", 0: "neg"}
@@ -109,7 +111,7 @@ class TrainModels:
             logging_steps=50,  # Registra logs cada 50 pasos
             logging_dir=self.output_dir_tensorboard,  # Directorio donde guardar los logs de TensorBoard
             learning_rate=self.learning_rate,  # Learning rate inicial
-            weight_decay=0.01,  # L2 weight decay (regularización)
+            weight_decay=self.weight_decay,  # L2 weight decay (regularización)
             fp16=use_cuda,  # Usa float16 si hay GPU compatible
             load_best_model_at_end=True,  # Carga mejor modelo (eval_loss más bajo)
             report_to=["tensorboard"],  # Reporta a TensorBoard

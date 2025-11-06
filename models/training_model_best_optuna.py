@@ -16,6 +16,7 @@ def optimize(n_trials=10, type="therapist"):
             "learning_rate": trial.suggest_float("learning_rate", 1e-5, 5e-5, log=True),
             "freezeLayer": trial.suggest_int("freezeLayer", 0, 6),
             "early": trial.suggest_int("early", 2, 4),
+            "weight_decay": trial.suggest_float("weight_decay", 1e-3, 1e-1, log=True),
         }
 
         print(f"\nTRIAL {trial.number} | Config: {config}")
@@ -33,6 +34,7 @@ def optimize(n_trials=10, type="therapist"):
             freezeLayer=config["freezeLayer"],
             early=config["early"],
             fill_nan=(type == "patient"),  # patient needs fill_nan=True
+            weight_decay=config["weight_decay"],
         )
 
         # Ejecutar entrenamiento completo
@@ -95,6 +97,7 @@ for type_val in types:
         "learning_rate": best_params["learning_rate"],
         "freezeLayer": best_params["freezeLayer"],
         "early": best_params["early"],
+        "weight_decay": best_params["weight_decay"],
     }
 
     # sobreescribir los mejores hiperparámetros en un archivo json (therapist.json o patient.json)
