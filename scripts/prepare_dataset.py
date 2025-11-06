@@ -84,7 +84,10 @@ def generate_negative_samples(conversation, emotion, sentiment, role='therapist'
                         context += f" [SEP] [USR]: {conversation[j]['user']} [SEP] [SYS]: {conversation[j]['therapist']}"
                 
                 # Respuesta incorrecta: usar respuesta de otra conversación
-                wrong_response = random.choice(list(all_responses_therapist))
+                available_responses = [resp for resp in all_responses_therapist if resp != current['therapist']]
+                if not available_responses:
+                    continue
+                wrong_response = random.choice(available_responses)
                 
                 negative_samples.append({
                     'context': context,
@@ -100,15 +103,18 @@ def generate_negative_samples(conversation, emotion, sentiment, role='therapist'
         if len(conversation) > 1 and all_responses_patient:
             # Generar negativos para el primer turno del paciente
             if len(conversation) >= 1:
-                wrong_response = random.choice(list(all_responses_patient))
-                negative_samples.append({
-                    'context': "",
-                    'input': conversation[0]['therapist'],
-                    'response': wrong_response,
-                    'label': 0,
-                    'emotion': emotion,
-                    'sentiment': sentiment
-                })
+                actual_response = conversation[0]['user']
+                available_responses = [resp for resp in all_responses_patient if resp != actual_response]
+                if available_responses:
+                    wrong_response = random.choice(available_responses)
+                    negative_samples.append({
+                        'context': "",
+                        'input': conversation[0]['therapist'],
+                        'response': wrong_response,
+                        'label': 0,
+                        'emotion': emotion,
+                        'sentiment': sentiment
+                    })
             
             # Generar negativos para turnos siguientes del paciente
             context = ""
@@ -119,7 +125,11 @@ def generate_negative_samples(conversation, emotion, sentiment, role='therapist'
                     context += f" [SEP] [USR]: {conversation[i]['user']} [SEP] [SYS]: {conversation[i]['therapist']}"
                 
                 # Respuesta incorrecta: usar respuesta de otra conversación
-                wrong_response = random.choice(list(all_responses_patient))
+                actual_response = conversation[i + 1]['user']
+                available_responses = [resp for resp in all_responses_patient if resp != actual_response]
+                if not available_responses:
+                    continue
+                wrong_response = random.choice(available_responses)
                 
                 negative_samples.append({
                     'context': context,
@@ -142,6 +152,8 @@ total_blocks = (count_experiences + BLOCK_SIZE - 1) // BLOCK_SIZE
 print(f"Procesando en {total_blocks} bloques de {BLOCK_SIZE} experiencias cada uno...")
 print(f"Tiempo estimado: ~{total_blocks * 2} minutos")
 
+# con 5 bloques = 75k registros
+# con 50 bloques = 750k registros
 for block_num in range(min(total_blocks, 5)): # cambiar a total_blocks para procesar todo el dataset
     start_idx = block_num * BLOCK_SIZE
     end_idx = min(start_idx + BLOCK_SIZE, count_experiences)
