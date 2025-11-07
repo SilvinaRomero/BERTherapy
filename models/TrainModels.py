@@ -32,7 +32,10 @@ class TrainModels:
         freezeLayer,
         early,
         fill_nan,
-        weight_decay
+        weight_decay,
+        warmup_ratio,
+        max_grad_norm,
+        gradient_accumulation_steps
     ):
         self.dir_dataset = dir_dataset
         self.output_dir_images = output_dir_images
@@ -46,6 +49,9 @@ class TrainModels:
         self.early = early
         self.fill_nan = fill_nan
         self.weight_decay = weight_decay
+        self.warmup_ratio = warmup_ratio
+        self.max_grad_norm = max_grad_norm
+        self.gradient_accumulation_steps = gradient_accumulation_steps
         # Definir id2label y label2id
         self.label2id = {"pos": 1, "neg": 0}
         self.id2label = {1: "pos", 0: "neg"}
@@ -112,6 +118,9 @@ class TrainModels:
             logging_dir=self.output_dir_tensorboard,  # Directorio donde guardar los logs de TensorBoard
             learning_rate=self.learning_rate,  # Learning rate inicial
             weight_decay=self.weight_decay,  # L2 weight decay (regularización)
+            warmup_ratio=self.warmup_ratio,  # Porcentaje de warmup
+            max_grad_norm=self.max_grad_norm,  # Clipping de gradiente
+            gradient_accumulation_steps=self.gradient_accumulation_steps,  # Acumulación de gradientes
             fp16=use_cuda,  # Usa float16 si hay GPU compatible
             load_best_model_at_end=True,  # Carga mejor modelo (eval_loss más bajo)
             report_to=["tensorboard"],  # Reporta a TensorBoard

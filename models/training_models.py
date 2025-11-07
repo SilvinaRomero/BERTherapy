@@ -27,7 +27,10 @@ print(config_patient)
 #     "learning_rate": 2e-5,
 #     "freezeLayer": 4,
 #     "early": 3,
-#     "weight_decay": 0.01
+#     "weight_decay": 0.01,
+#     "warmup_ratio": 0.0,
+#     "max_grad_norm": 1.0,
+#     "gradient_accumulation_steps": 1
 # }
 
 def train_therapist(data=[]):
@@ -43,7 +46,10 @@ def train_therapist(data=[]):
         freezeLayer=config_therapist["freezeLayer"],
         early=config_therapist["early"],
         fill_nan=False,
-        weight_decay=config_therapist["weight_decay"],
+        weight_decay=config_therapist.get("weight_decay", 0.01),
+        warmup_ratio=config_therapist.get("warmup_ratio", 0.0),
+        max_grad_norm=config_therapist.get("max_grad_norm", 1.0),
+        gradient_accumulation_steps=config_therapist.get("gradient_accumulation_steps", 1),
     )
 
     # Ejecutar todo el pipeline
@@ -71,7 +77,10 @@ def train_patient(data=[]):
         freezeLayer=config_patient["freezeLayer"],
         early=config_patient["early"],
         fill_nan=True,
-        weight_decay=config_patient["weight_decay"],
+        weight_decay=config_patient.get("weight_decay", 0.01),
+        warmup_ratio=config_patient.get("warmup_ratio", 0.0),
+        max_grad_norm=config_patient.get("max_grad_norm", 1.0),
+        gradient_accumulation_steps=config_patient.get("gradient_accumulation_steps", 1),
     )
 
     # Ejecutar todo el pipeline

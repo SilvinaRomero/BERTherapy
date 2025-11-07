@@ -10,13 +10,16 @@ def optimize(n_trials=10, type="therapist"):
     def objective(trial):
         # # --- Sugerir hiperparámetros ---
         config = {
-            "version": f"{trial.number}",
+            "version": f"2.{trial.number}",
             "num_train_epochs": trial.suggest_int("num_train_epochs", 3, 8),
             "batch_size": trial.suggest_categorical("batch_size", [64, 128]),
             "learning_rate": trial.suggest_float("learning_rate", 1e-5, 5e-5, log=True),
             "freezeLayer": trial.suggest_int("freezeLayer", 0, 6),
             "early": trial.suggest_int("early", 2, 4),
             "weight_decay": trial.suggest_float("weight_decay", 1e-3, 1e-1, log=True),
+            "warmup_ratio": trial.suggest_float("warmup_ratio", 0.0, 0.2),
+            "max_grad_norm": trial.suggest_float("max_grad_norm", 0.5, 1.5),
+            "gradient_accumulation_steps": trial.suggest_int("gradient_accumulation_steps", 1, 4),
         }
 
         print(f"\nTRIAL {trial.number} | Config: {config}")
@@ -35,6 +38,9 @@ def optimize(n_trials=10, type="therapist"):
             early=config["early"],
             fill_nan=(type == "patient"),  # patient needs fill_nan=True
             weight_decay=config["weight_decay"],
+            warmup_ratio=config["warmup_ratio"],
+            max_grad_norm=config["max_grad_norm"],
+            gradient_accumulation_steps=config["gradient_accumulation_steps"],
         )
 
         # Ejecutar entrenamiento completo
@@ -79,7 +85,7 @@ for type_val in types:
     print(f"  OPTIMIZACIÓN Y ENTRENAMIENTO DE {type_val.upper()}")
     print("="*80 + "\n")
     
-    study = optimize(n_trials=15, type=type_val)
+    study = optimize(n_trials=25, type=type_val)
     best_params = study.best_params
     
     print("\n" + "="*80)
@@ -91,13 +97,16 @@ for type_val in types:
     print("="*80 + "\n")
     
     config_to_save = {
-        "version": f"{study.best_trial.number}",
+        "version": f"2.{study.best_trial.number}",
         "num_train_epochs": best_params["num_train_epochs"],
         "batch_size": best_params["batch_size"],
         "learning_rate": best_params["learning_rate"],
         "freezeLayer": best_params["freezeLayer"],
         "early": best_params["early"],
         "weight_decay": best_params["weight_decay"],
+        "warmup_ratio": best_params["warmup_ratio"],
+        "max_grad_norm": best_params["max_grad_norm"],
+        "gradient_accumulation_steps": best_params["gradient_accumulation_steps"],
     }
 
     # sobreescribir los mejores hiperparámetros en un archivo json (therapist.json o patient.json)
