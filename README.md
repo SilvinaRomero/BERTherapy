@@ -28,33 +28,49 @@ pip install -r requirements.txt
 ## 3. Preparar los datos
 
 Antes de entrenar, debes procesar los datos:
+El dataset se descarga automáticamente desde Hugging Face
 
 ```bash
 python scripts/prepare_dataset.py
 ```
 
-Esto genera los archivos CSV procesados en `data/processed/` y los pools de respuestas.  
-Verifica que los datos se hayan creado correctamente antes de continuar, es un proceso lento, se puede usar el 
-archivo de prepare_dataset_sample.py para generar los datasets_sample y pools_sample de ejemplo y revisar las salidas, aunque 
-estos archivos ya están incluidos en el repositorio
+Esto genera los archivos CSV procesados en `data/processed/` y los pools de respuestas. 
+Verifica que los datos se hayan creado correctamente antes de continuar
+**Tiempo estimado:** 10-20 minutos (depende de tu hardware) 
+**Para probar antes:** Puedes usar `prepare_dataset_sample.py` para generar datasets de ejemplo más pequeños y verificar que todo funciona. Los archivos de ejemplo ya están incluidos en el repositorio.
 
-Tip: el archivo prepare_dataset está actualmente limitado a 5 bloques, 5k experiencias.
+Tip: el archivo prepare_dataset está actualmente limitado a 5 bloques, 5k experiencias (diálogos completos).
   - Total muestras terapeuta csv full: 71.392
   - Total muestras paciente csv full: 76.364
 ---
 
 ## 4. Entrenar los modelos
 
-Lanza el entrenamiento ejecutando:
+Tienes dos caminos:
+
+### 4.1 Búsqueda automática con Optuna (recomendado)
+
+```bash
+python models/training_model_best_optuna.py
+```
+
+- Lanza un estudio Optuna (por defecto 25 *trials* para terapeuta y paciente).  
+- Cada trial entrena un modelo con una combinación distinta de hiperparámetros y se poda automáticamente cuando el rendimiento es malo.  
+- Al finalizar, guarda la mejor configuración encontrada en `models/config/therapist.json` y `models/config/patient.json`, y almacena el modelo entrenado con esa configuración.
+
+> **Nota:** Cada trial puede tardar horas; asegúrate de tener GPU disponible. Puedes ajustar el número de trials o el espacio de búsqueda modificando `models/training_model_best_optuna.py`.
+
+### 4.2 Entrenamiento manual
 
 ```bash
 python models/training_models.py
 ```
 
-Esto entrenará dos modelos: uno para el "terapeuta" y otro para el "paciente", y los guardará en la carpeta `models/`.  
-> **Importante:**  
-> - La versión que se está entrenando se configura en el diccionario `config` en `models/training_models.py` (`version`).  
-> - Cuando más adelante quieras usar un modelo diferente, asegúrate de actualizar el número de versión tanto en el código de *Patient* como en *Therapist* para que cargue el modelo correcto.
+- Usa configuraciones fijas situadas en `models/config/therapist_test.json` y `models/config/patient_test.json`.  
+- Sirve para lanzar entrenamientos controlados (por ejemplo, probar una configuración concreta sin correr Optuna).
+
+> **Importante:** El proyecto (bots y scripts) está preparado para cargar la configuración óptima resultante de Optuna (`models/config/therapist.json` y `models/config/patient.json`).  
+> Si entrenas manualmente y quieres usar esa configuración, modifica las rutas en los scripts que consumen la configuración (por ejemplo `bots/Therapist.py` y `bots/Patient.py`) para que apunten a tus JSON; de "patient.json" a "patient_test.json" y de "therapist.json" a "therapist_test.json"
 
 ---
 
