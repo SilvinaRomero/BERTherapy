@@ -7,10 +7,20 @@ from deep_translator import GoogleTranslator
 # Obtener la ruta del directorio del proyecto (BERTherapy)
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
+def _sanitize_text(text):
+    if isinstance(text, bytes):
+        text = text.decode("utf-8", errors="ignore")
+    if isinstance(text, str):
+        return text.encode("utf-8", "surrogatepass").decode("utf-8", errors="ignore")
+    return str(text)
+
+
 def translate(text, source, target):
     """Traduce el texto para que sea en español"""
+    safe_text = _sanitize_text(text)
     translator = GoogleTranslator(source=source, target=target)
-    return translator.translate(text)
+    translated = translator.translate(safe_text)
+    return _sanitize_text(translated)
 
 # Emociones del dataset
 emotions = [
@@ -75,7 +85,7 @@ def run_conversation():
     # Selección de sentimiento
     print(f"\nSelecciona el sentimiento del paciente:")
     for i, sent in enumerate(sentiments):
-        print(f"{i}: {translate(sent,"en","es")}")
+        print(f"{i}: {translate(sent, 'en', 'es')}")
     choice_sentiment = input(
         f"Selecciona un número (0-{len(sentiments)-1}) para el sentimiento: "
     ).strip()
