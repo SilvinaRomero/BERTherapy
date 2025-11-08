@@ -5,7 +5,9 @@ from transformers import (
     TrainingArguments,
     Trainer,
     EarlyStoppingCallback,
+    TrainerCallback
 )
+import optuna
 from datasets import Dataset
 import numpy as np
 import torch
@@ -16,6 +18,28 @@ from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from sklearn.model_selection import train_test_split
 import os
 import random
+
+
+class OptunaPruningCallback(TrainerCallback):
+    def __init__(self, trial, metric):
+        self.trial = trial
+        self.metric = metric
+
+    def on_evaluate(self, args, state, control, metrics, **kwargs):
+        metric_value = metrics.get(self.metric)
+        if metric_value is None:
+            return control
+
+        if state.epoch is not None:
+            step = int(state.epoch)
+        else:
+            step = int(state.global_step)
+
+        self.trial.report(metric_value, step=step)
+        if self.trial.should_prune():
+            raise optuna.TrialPruned()
+
+        return control
 
 
 class TrainModels:
@@ -35,7 +59,8 @@ class TrainModels:
         weight_decay,
         warmup_ratio,
         max_grad_norm,
-        gradient_accumulation_steps
+        gradient_accumulation_steps,
+        trial=None
     ):
         self.dir_dataset = dir_dataset
         self.output_dir_images = output_dir_images
@@ -61,6 +86,8 @@ class TrainModels:
         os.makedirs(self.output_dir_tensorboard, exist_ok=True)
         os.makedirs(self.output_dir_model, exist_ok=True)
         os.makedirs(self.check_dir_model, exist_ok=True)
+        
+        self.trial = trial
 
         self.data = None
         self.train_dataset = None
@@ -141,6 +168,9 @@ class TrainModels:
         return EarlyStoppingCallback(early_stopping_patience=self.early)
 
     def trainer_(self):
+        callbacks = [self.getEarlyStoppingCallback()]
+        if self.trial is not None:
+            callbacks.append(OptunaPruningCallback(self.trial, "eval_loss"))
         self.trainer = Trainer(
             model=self.model,
             args=self.args,
@@ -149,7 +179,7 @@ class TrainModels:
             tokenizer=self.tokenizer,
             data_collator=self.collator,
             compute_metrics=self.compute_metrics,
-            callbacks=[self.getEarlyStoppingCallback()],
+            callbacks=callbacks,
         )
         self.trainer.train()
 

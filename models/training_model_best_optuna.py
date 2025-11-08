@@ -41,6 +41,7 @@ def optimize(n_trials=10, type="therapist"):
             warmup_ratio=config["warmup_ratio"],
             max_grad_norm=config["max_grad_norm"],
             gradient_accumulation_steps=config["gradient_accumulation_steps"],
+            trial=trial # pasar instancia de optuna a TrainModels para que el pruned funcione correctamente
         )
 
         # Ejecutar entrenamiento completo
@@ -52,7 +53,6 @@ def optimize(n_trials=10, type="therapist"):
 
         print(f"TRIAL {type.upper()}: {trial.number} → eval_loss = {val_loss:.4f}")
 
-        # Opcional: podar trials malos
         trial.report(val_loss, step=config["num_train_epochs"])
         if trial.should_prune():
             raise optuna.TrialPruned()
