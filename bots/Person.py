@@ -4,6 +4,7 @@ import torch
 import numpy as np
 import random
 import os
+import pickle
 
 # Obtener la ruta del directorio del proyecto (BERTherapy)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -300,12 +301,51 @@ class Person:
         class_name = self.__class__.__name__
         print(f"Comenzando el clustering para {class_name}....")
         
-        # Obtener embeddings de todas las respuestas
-        response_embeddings = self._get_embeddings(self.responses)
-        
+        cluster_labels = None
+        response_embeddings = None
+
         # KMeans clustering
-        self.kmeans = KMeans(n_clusters=self.n_clusters, random_state=42, n_init=30)
-        cluster_labels = self.kmeans.fit_predict(response_embeddings)
+        # guardar modelos y clusters para que no tarde tanto en cargarlos
+        kmeans_dir = os.path.join(PROJECT_ROOT, "models", "kmeans")
+        os.makedirs(kmeans_dir, exist_ok=True)
+        class_name_lower = class_name.lower()
+        kmeans_path = os.path.join(kmeans_dir, f"{class_name_lower}_{self.n_clusters}.pkl")
+
+        if os.path.exists(kmeans_path):
+            with open(kmeans_path, "rb") as f:
+                data = pickle.load(f)
+
+            if isinstance(data, dict) and "kmeans" in data and "cluster_labels" in data:
+                self.kmeans = data["kmeans"]
+                cluster_labels = np.array(data["cluster_labels"])
+                print(f"\n✅ Modelo KMeans y clusters cargados caché")
+            else:
+                # Formato antiguo: solo el modelo KMeans
+                self.kmeans = data
+                print(f"\n❌ Modelo KMeans cargado desde caché (sin clusters, se recalcularán)")
+        else:
+            print(f"\n❌ No se encontró modelo KMeans previo. Entrenando uno nuevo...")
+
+        if cluster_labels is None:
+            response_embeddings = self._get_embeddings(self.responses)
+
+            if self.kmeans is None:
+                self.kmeans = KMeans(n_clusters=self.n_clusters, random_state=42, n_init=30)
+                cluster_labels = self.kmeans.fit_predict(response_embeddings)
+                message = "entrenado"
+            else:
+                cluster_labels = self.kmeans.predict(response_embeddings)
+                message = "actualizado"
+
+            with open(kmeans_path, "wb") as f:
+                pickle.dump(
+                    {
+                        "kmeans": self.kmeans,
+                        "cluster_labels": cluster_labels,
+                    },
+                    f,
+                )
+            print(f"\n✅ Modelo KMeans {message} y clusters guardados en {kmeans_path}")
         
         # Organizar respuestas por cluster
         for idx, cluster_id in enumerate(cluster_labels):
@@ -313,4 +353,4 @@ class Person:
                 self.response_clusters[cluster_id] = []
             self.response_clusters[cluster_id].append(idx)
 
-        print(f"Clustering completo para {class_name}! Promedio de respuestas por cluster: {len(self.responses) / self.n_clusters:.1f}")
+        print(f"\n✅ Clustering completo para {class_name}! Promedio de respuestas por cluster: {len(self.responses) / self.n_clusters:.1f}\n")
