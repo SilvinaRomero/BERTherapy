@@ -1,9 +1,9 @@
 {
-    "version": "14",
-    "num_train_epochs": 4,
+    "version": "1.2",
+    "num_train_epochs": 7,
     "batch_size": 128,
-    "learning_rate": 4.143506832436894e-05,
-    "freezeLayer": 2,
+    "learning_rate": 4.6282341822544243e-05,
+    "freezeLayer": 0,
     "early": 3,
     "weight_decay": 0.01,
     "warmup_ratio": 0.0,

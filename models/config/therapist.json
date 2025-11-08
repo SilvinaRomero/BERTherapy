@@ -1,9 +1,12 @@
 {
-    "version": "10",
-    "num_train_epochs": 7,
-    "batch_size": 128,
-    "learning_rate": 4.6282341822544243e-05,
-    "freezeLayer": 0,
-    "early": 3,
-    "weight_decay": 0.01
+    "version": "2.10",
+    "num_train_epochs": 8,
+    "batch_size": 64,
+    "learning_rate": 4.8485057931817296e-05,
+    "freezeLayer": 5,
+    "early": 4,
+    "weight_decay": 0.020845982800904266,
+    "warmup_ratio": 0.14742066948008803,
+    "max_grad_norm": 0.5165938723705293,
+    "gradient_accumulation_steps": 2
 }
