@@ -1,9 +1,16 @@
 from bots.Therapist import Therapist
 from bots.Patient import Patient
 import os
+import time
+from deep_translator import GoogleTranslator
 
 # Obtener la ruta del directorio del proyecto (BERTherapy)
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+def translate(text, source, target):
+    """Traduce el texto para que sea en español"""
+    translator = GoogleTranslator(source=source, target=target)
+    return translator.translate(text)
 
 # Emociones del dataset
 emotions = [
@@ -39,7 +46,7 @@ def cleanup_used_responses():
     for file_path in files_to_clean:
         if os.path.exists(file_path):
             os.remove(file_path)
-            print(f"✅ Archivo limpiado: {os.path.basename(file_path)}")
+            # print(f"✅ Archivo limpiado: {os.path.basename(file_path)}")
 
 def run_conversation():
     # inicializar los bots
@@ -52,7 +59,7 @@ def run_conversation():
     # Selección de emoción
     print("\nSelecciona la emoción del paciente:")
     for i, em in enumerate(emotions):
-        print(f"{i}: {em}")
+        print(f"{i}: {translate(em, 'en', 'es')}")
     choice_emotion = input(
         f"Selecciona un número (0-{len(emotions)-1}) para la emoción: "
     ).strip()
@@ -68,7 +75,7 @@ def run_conversation():
     # Selección de sentimiento
     print(f"\nSelecciona el sentimiento del paciente:")
     for i, sent in enumerate(sentiments):
-        print(f"{i}: {sent}")
+        print(f"{i}: {translate(sent,"en","es")}")
     choice_sentiment = input(
         f"Selecciona un número (0-{len(sentiments)-1}) para el sentimiento: "
     ).strip()
@@ -88,12 +95,13 @@ def run_conversation():
         first_input = input("TERAPEUTA: ").strip()
 
     # Inicializar context con el primer mensaje del terapeuta
-    context = f"[SYS]: {first_input}"
+    context = f"[SYS]: {translate(first_input, 'es', 'en')}"
+
     # con el primer contexto, la emocion, el sentimiento y el primer input del terapeuta, el paciente responde
     resp = patient.respond(
         emotion, sentiment, context, first_input
     )
-    print("\nUSER: " + resp)
+    print("\nUSER: " + translate(resp, 'en', 'es'))
     context += f" [SEP] [USR]: {resp}" # [SEP] para separar los contextos: emoción [SEP] sentimiento [SEP] paciente [SEP] terapeuta = contexto
     turno = 1  # Empieza con el terapeuta
     # una vez dado el contexto, la emotion y el sentiment, y obtenido el primer input del paciente, ronda pregunta/respuesta
@@ -101,13 +109,15 @@ def run_conversation():
         if turno % 2 != 0:  # Turno impar: Terapeuta
             resp_t = therapist.respond(emotion, sentiment, context, resp)  # Terapeuta responde
             context += f" [SEP] [SYS]: {resp_t}"
-            print(f"\nTERAPEUTA: {resp_t}")
+            print(f"\nTERAPEUTA: {translate(resp_t, 'en', 'es')}")
         else:  # Turno par: Paciente
             resp = patient.respond(emotion, sentiment, context, resp_t)  # Paciente responde
             context += f" [SEP] [USR]: {resp}"
-            print("\nUSER: " + resp)
+            print("\nUSER: " + translate(resp, 'en', 'es'))
 
         turno += 1
+        time.sleep(1)
+    print("\n")
     
     # Limpiar archivos de respuestas usadas al terminar
     cleanup_used_responses()
