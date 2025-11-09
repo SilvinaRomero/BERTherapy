@@ -1,12 +1,12 @@
 {
-    "version": "14",
-    "num_train_epochs": 4,
-    "batch_size": 128,
-    "learning_rate": 4.143506832436894e-05,
-    "freezeLayer": 2,
-    "early": 3,
-    "weight_decay": 0.01,
-    "warmup_ratio": 0.0,
-    "max_grad_norm": 1.0,
-    "gradient_accumulation_steps": 1
+    "version": "2.24",
+    "num_train_epochs": 3,
+    "batch_size": 64,
+    "learning_rate": 4.798782051341799e-05,
+    "freezeLayer": 0,
+    "early": 4,
+    "weight_decay": 0.0017706485908551993,
+    "warmup_ratio": 0.18234328597481217,
+    "max_grad_norm": 0.6286820879610621,
+    "gradient_accumulation_steps": 2
 }
