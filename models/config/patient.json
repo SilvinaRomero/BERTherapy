@@ -1,12 +1,12 @@
 {
-    "version": "2.24",
-    "num_train_epochs": 3,
+    "version": "2.11",
+    "num_train_epochs": 6,
     "batch_size": 64,
-    "learning_rate": 4.798782051341799e-05,
+    "learning_rate": 3.463507649125403e-05,
     "freezeLayer": 0,
     "early": 4,
-    "weight_decay": 0.0017706485908551993,
-    "warmup_ratio": 0.18234328597481217,
-    "max_grad_norm": 0.6286820879610621,
+    "weight_decay": 0.0015849052785219422,
+    "warmup_ratio": 0.1988014582575432,
+    "max_grad_norm": 0.8568334563724068,
     "gradient_accumulation_steps": 2
 }
