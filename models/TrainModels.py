@@ -256,6 +256,12 @@ class TrainModels:
         # convertir a datasets
         self.train_dataset = Dataset.from_pandas(pd.concat([X_train, y_train], axis=1))
         self.test_dataset = Dataset.from_pandas(pd.concat([X_test, y_test], axis=1))
+        # ⚠️ GUARDAR DATASETS PARA LIME
+        # self.train_dataset.save_to_disk(f"{self.output_dir_model}_train_data")
+        self.test_dataset.save_to_disk(f"{self.output_dir_model}_test_data")
+        print(f"✅ Train dataset guardado en: {self.output_dir_model}_train_data")
+        print(f"✅ Test dataset guardado en: {self.output_dir_model}_test_data")
+
 
     def tokenize(self, batch):
         # Usar emotion y sentiment
